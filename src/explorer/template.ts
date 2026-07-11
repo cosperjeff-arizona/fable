@@ -311,7 +311,10 @@ var DUMP = __ETYMON_DUMP_JSON__;
     var items = [];
     path.forEach(function (branch) {
       branch.events.forEach(function (ev) {
-        items.push({ century: ev.century, paradigm: false, text: ev.change.description });
+        // Sound-change events carry { change: { description } }; M5's
+        // drift/taboo events carry a flat { note } instead.
+        var text = ev.change ? ev.change.description : ev.note;
+        items.push({ century: ev.century, paradigm: false, text: text || '(event)' });
       });
       branch.paradigmNotes.forEach(function (note) {
         items.push({ century: note.century, paradigm: true, text: note.note });
