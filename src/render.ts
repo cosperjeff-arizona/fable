@@ -5,11 +5,12 @@
 // `main()`.
 
 import type { Branch, Simulation } from './history.js';
-import { coinageInfo, cognates, formIn, leaves, semanticNotes, senses, trace } from './query.js';
+import { coinageInfo, cognates, doublets, formIn, leaves, loanInfo, semanticNotes, senses, trace } from './query.js';
 import { CONCEPTS } from './concepts.js';
 import { romanize } from './romanize.js';
 import type { Word } from './phonology.js';
 import type { DriftEvent } from './drift.js';
+import type { BorrowEvent } from './contact.js';
 
 export function findLeaf(sim: Simulation, needle: string): Branch {
   const lower = needle.toLowerCase();
@@ -68,12 +69,17 @@ function driftEventLabel(ev: DriftEvent): string {
   }
 }
 
+/** specs/M6.md's counterpart to `driftEventLabel`, for a `BorrowEvent`. */
+function borrowEventLabel(ev: BorrowEvent): string {
+  return `borrowing: '${ev.concept}' from branch ${ev.fromBranchId}`;
+}
+
 export function changeHistory(sim: Simulation): string[] {
   const out: string[] = ['Sound changes by branch:'];
   const walk = (node: Branch): void => {
     const label = branchLabel(sim, node);
     for (const ev of node.events) {
-      const text = ev.kind === 'sound' ? ev.change.description : driftEventLabel(ev);
+      const text = ev.kind === 'sound' ? ev.change.description : ev.kind === 'borrow' ? borrowEventLabel(ev) : driftEventLabel(ev);
       out.push(`  [${label}] year ${ev.century * 100}: ${text}`);
     }
     for (const note of node.paradigmNotes) {
@@ -115,11 +121,17 @@ export function renderDict(sim: Simulation, leaf: Branch): string[] {
     // origin (current parts), not the family's original proto-level
     // derivation, which may no longer describe the concept's current word.
     const coinage = coinageInfo(sim, concept.id, leaf.id);
-    const note = coinage
-      ? ` (${coinage.taboo ? 'taboo replacement' : 'coined'}: ${coinage.parts.join(' + ')})`
-      : proto.origin === 'root'
-        ? ''
-        : ` (${proto.origin}: ${proto.parts?.join(' + ')})`;
+    // specs/M6.md: "dict marks loans with their source language and
+    // century" — checked before coinage/inherited-derivation, since a loan
+    // always wins the "how do we describe this word's origin" question.
+    const loan = loanInfo(sim, concept.id, leaf.id);
+    const note = loan
+      ? ` (borrowed from ${loan.fromLabel}, year ${loan.century * 100})`
+      : coinage
+        ? ` (${coinage.taboo ? 'taboo replacement' : 'coined'}: ${coinage.parts.join(' + ')})`
+        : proto.origin === 'root'
+          ? ''
+          : ` (${proto.origin}: ${proto.parts?.join(' + ')})`;
     const sensesList = senses(sim, concept.id, leaf.id);
     const sensesTag = sensesList.length > 1 ? ` [senses: ${sensesList.join(', ')}]` : '';
     lines.push(`  ${concept.id.padEnd(width)} ${evolved}${note}${sensesTag}`);
@@ -162,7 +174,34 @@ export function renderCognates(sim: Simulation, concept: string): string[] {
   const cols = ['concept', `*${sim.familyName.replace(/^Proto-/, '')}`, ...rows.map((r) => r.name)];
   // specs/M5.md: a non-cognate cell (coined/tabooed word) is marked with †
   // so the table honestly shows lexical replacement rather than pretending
-  // every daughter's form descends from the shared proto root.
-  const dataRow = [concept, `*${proto.word.romanized}`, ...rows.map((r) => form(r.form) + (r.cognate ? '' : ' †'))];
+  // every daughter's form descends from the shared proto root. specs/M6.md
+  // adds ‡ for a borrowed cell — distinct from † since a loan isn't a
+  // language-internal replacement, it's contact.
+  const mark = (r: (typeof rows)[number]): string => (r.borrowed ? ' ‡' : r.cognate ? '' : ' †');
+  const dataRow = [concept, `*${proto.word.romanized}`, ...rows.map((r) => form(r.form) + mark(r))];
   return [`Cognates — ${concept}:`, ...table(cols, [dataRow])];
+}
+
+/** specs/M6.md's `doublets` command: concepts where `leaf` holds both an
+ * inherited/native line and a borrowed line, one summary line each, e.g.
+ * `salt: "solt" (inherited < *salta) vs "zalt" (borrowed from Ges, year 1400)`. */
+export function renderDoublets(sim: Simulation, leaf: Branch): string[] {
+  const entries = doublets(sim, leaf.id);
+  const lines: string[] = [`Doublets in ${leaf.name ?? leaf.id}:`];
+  if (entries.length === 0) {
+    lines.push('  (none)');
+    return lines;
+  }
+  for (const entry of entries) {
+    const proto = sim.lexicon.lexemes.find((l) => l.concept === entry.concept)!;
+    const nativeQualifier =
+      entry.native.kind === 'archaic'
+        ? `inherited < *${proto.word.romanized}`
+        : `native word, later came to mean '${entry.native.home}'`;
+    lines.push(
+      `  ${entry.concept}: "${entry.native.romanized}" (${nativeQualifier}) vs ` +
+        `"${entry.borrowedRomanized}" (borrowed from ${entry.fromLabel}, year ${entry.century * 100})`,
+    );
+  }
+  return lines;
 }

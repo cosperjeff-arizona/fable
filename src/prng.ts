@@ -101,6 +101,16 @@ export type Streams = {
    * single sound-change draw — the M3 goldens stay byte-identical.
    */
   drift(id: string): Stream;
+  /**
+   * specs/M6.md: contact/borrowing draws from yet another independent
+   * stream family, one per unordered pair of branch ids
+   * (`contact:<idA>|<idB>`, ids sorted lexicographically so the stream for
+   * a pair doesn't depend on which side is passed first). Distinct from
+   * `branch:<id>` and `drift:<id>`, so enabling/disabling contact (or any
+   * other pair's borrowing activity) never perturbs a branch's own
+   * sound-change or drift draws.
+   */
+  contact(idA: string, idB: string): Stream;
 };
 
 /**
@@ -119,6 +129,10 @@ export function makeStreams(seed: number): Streams {
     },
     drift(id: string): Stream {
       return derive(`drift:${id}`);
+    },
+    contact(idA: string, idB: string): Stream {
+      const [x, y] = [idA, idB].sort();
+      return derive(`contact:${x}|${y}`);
     },
   };
 }

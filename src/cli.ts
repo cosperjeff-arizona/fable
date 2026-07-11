@@ -12,7 +12,7 @@
 import { generateSimulation, type Simulation } from './history.js';
 import { leaves } from './query.js';
 import { toJSON, fromJSON } from './serialize.js';
-import { findLeaf, renderCognates, renderDict, renderGenerate, renderTrace, renderTree } from './render.js';
+import { findLeaf, renderCognates, renderDict, renderDoublets, renderGenerate, renderTrace, renderTree } from './render.js';
 import { embedDump } from './explorer/template.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -74,7 +74,13 @@ function loadSimulation(flags: Record<string, string>): Simulation {
   // is untouched. Acceptance criterion 1: `--no-drift` reproduces the exact
   // M3-era output.
   const driftEnabled = !('no-drift' in flags);
-  return generateSimulation({ seed, centuries, maxLeaves, driftEnabled });
+  // specs/M6.md's "--no-contact" flag: same opt-out pattern as --no-drift —
+  // the CLI defaults contact/borrowing ON, unlike the library-level
+  // `generateSimulation` default (off), which exists purely so every pre-M6
+  // direct caller/test is untouched. Acceptance criterion 1: `--no-contact`
+  // reproduces the exact pre-M6 output byte-for-byte.
+  const contactEnabled = !('no-contact' in flags);
+  return generateSimulation({ seed, centuries, maxLeaves, driftEnabled, contactEnabled });
 }
 
 // ------------------------------------------------------------------ commands
@@ -106,6 +112,10 @@ function cmdDict(sim: Simulation, langName: string): void {
   console.log(renderDict(sim, findLeaf(sim, langName)).join('\n'));
 }
 
+function cmdDoublets(sim: Simulation, langName: string): void {
+  console.log(renderDoublets(sim, findLeaf(sim, langName)).join('\n'));
+}
+
 function cmdTrace(sim: Simulation, concept: string, flags: Record<string, string>): void {
   const targets = flags.lang ? [findLeaf(sim, flags.lang)] : leaves(sim);
   console.log(renderTrace(sim, concept, targets).join('\n'));
@@ -116,15 +126,18 @@ function cmdTrace(sim: Simulation, concept: string, flags: Record<string, string
 const USAGE = `Usage: etymon <command> [options]
 
 Commands:
-  generate --seed N [--centuries N] [--max-leaves N] [--json dump.json] [--no-drift]
-  dict <language> --seed N [--no-drift]
-  trace <concept> --seed N [--lang <name>] [--no-drift]
-  cognates <concept> --seed N [--no-drift]
-  tree --seed N [--no-drift]
-  explore --seed N [--centuries N] [--max-leaves N] [--out explorer.html] [--no-drift]
+  generate --seed N [--centuries N] [--max-leaves N] [--json dump.json] [--no-drift] [--no-contact]
+  dict <language> --seed N [--no-drift] [--no-contact]
+  trace <concept> --seed N [--lang <name>] [--no-drift] [--no-contact]
+  cognates <concept> --seed N [--no-drift] [--no-contact]
+  doublets <language> --seed N [--no-drift] [--no-contact]
+  tree --seed N [--no-drift] [--no-contact]
+  explore --seed N [--centuries N] [--max-leaves N] [--out explorer.html] [--no-drift] [--no-contact]
 
 Semantic drift, taboo replacement, and coinage (specs/M5.md) are on by
-default; pass --no-drift to reproduce pre-M5 output exactly.
+default; pass --no-drift to reproduce pre-M5 output exactly. Contact and
+borrowing between neighboring branches (specs/M6.md) are also on by
+default; pass --no-contact to reproduce pre-M6 output exactly.
 
 All commands accept --from dump.json instead of --seed to load a previously
 generated simulation.`;
@@ -161,6 +174,12 @@ function main(): void {
         const concept = positionals[0];
         if (!concept) throw new Error('cognates: expected a concept argument');
         console.log(renderCognates(loadSimulation(flags), concept).join('\n'));
+        break;
+      }
+      case 'doublets': {
+        const lang = positionals[0];
+        if (!lang) throw new Error('doublets: expected a language name argument');
+        cmdDoublets(loadSimulation(flags), lang);
         break;
       }
       case 'explore':

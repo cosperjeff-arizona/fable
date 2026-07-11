@@ -404,7 +404,7 @@ var DUMP = __ETYMON_DUMP_JSON__;
     var cognateCells = dump.derived.leaves.map(function (l) {
       var e = l.dictionary.filter(function (d) { return d.concept === concept; })[0];
       var cls = l.branchId === leafId ? ' class="selected"' : '';
-      var mark = e && e.coined ? ' †' : '';
+      var mark = e && e.borrowed ? ' ‡' : (e && e.coined ? ' †' : '');
       return '<td' + cls + '>' + escapeHtml(e ? e.romanized : '—') + escapeHtml(mark) + '</td>';
     }).join('');
 
@@ -473,7 +473,7 @@ var DUMP = __ETYMON_DUMP_JSON__;
   }
 
   function looksLikeDump(candidate) {
-    return !!candidate && (candidate.formatVersion === 1 || candidate.formatVersion === 2) &&
+    return !!candidate && (candidate.formatVersion === 1 || candidate.formatVersion === 2 || candidate.formatVersion === 3) &&
       !!candidate.root && !!candidate.config && !!candidate.lexicon;
   }
 

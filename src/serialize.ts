@@ -14,7 +14,8 @@ import type { Affix, Lexeme, Lexicon } from './lexicon.js';
 import type { Segment } from './phonology.js';
 import { romanize } from './romanize.js';
 import type { Branch, Simulation } from './history.js';
-import { isCoined, isTabooed, leaves, semanticNotes, senses, trace } from './query.js';
+import { isBorrowed, isCoined, isTabooed, leaves, semanticNotes, senses, trace } from './query.js';
+import { rootInterval, type Interval } from './contact.js';
 
 export type SerializedWord = { segments: Segment[]; stress: number; romanized: string };
 
@@ -86,6 +87,10 @@ export type DerivedDictionaryEntry = {
   notes?: string[];
   coined?: boolean;
   taboo?: boolean;
+  /** specs/M6.md: true if this concept's current word in this leaf is a
+   * loan (mirrors the CLI cognate table's `‡` marker). Always present from
+   * formatVersion 3 on; absent on dumps that predate M6. */
+  borrowed?: boolean;
 };
 
 export type DerivedLeaf = {
@@ -96,14 +101,15 @@ export type DerivedLeaf = {
 
 export type Derived = { leaves: DerivedLeaf[] };
 
-/** specs/M5.md: bumped from 1 to 2 to carry drift/taboo/coinage data
- * (Branch gains `reassignments`; ChangeEvent becomes a `kind`-tagged
- * union). `fromJSON` still accepts v1 dumps — see `migrateV1ToV2` — and
- * treats their absent drift data as empty, so no historical dump breaks. */
-export type EtymonDump = Simulation & { formatVersion: 2; derived?: Derived };
+/** specs/M6.md: bumped from 2 to 3 to carry contact/borrowing data (Branch
+ * gains `interval`; ChangeEvent's union gains `BorrowEvent`;
+ * LexemeReassignment's `cause` gains 'borrow'/'loan-displacement').
+ * `fromJSON` still accepts v1/v2 dumps — see `migrateToV3` — and treats
+ * their absent contact data as empty, so no historical dump breaks. */
+export type EtymonDump = Simulation & { formatVersion: 3; derived?: Derived };
 
 const REQUIRED_FIELDS = ['config', 'inventory', 'lexicon', 'familyName', 'root'] as const;
-const CURRENT_FORMAT_VERSION = 2;
+const CURRENT_FORMAT_VERSION = 3;
 
 /** Compute the `derived` section: for every leaf x concept, the final
  * romanized form and its form-altering trace steps, via the same
@@ -125,16 +131,18 @@ function computeDerived(sim: Simulation): Derived {
           notes: semanticNotes(sim, lexeme.concept, leaf.id),
           coined: isCoined(sim, lexeme.concept, leaf.id),
           taboo: isTabooed(sim, lexeme.concept, leaf.id),
+          borrowed: isBorrowed(sim, lexeme.concept, leaf.id),
         };
       }),
     })),
   };
 }
 
-/** `{ formatVersion: 2, ...sim }` — see specs/M3.md's "JSON dump" section
- * and specs/M5.md's version bump. Pass `{ derived: true }` to additionally
- * compute specs/M4.md's `derived` section (family tree x lexicon, evolved
- * and traced for every leaf, now including senses/notes/coined/taboo). */
+/** `{ formatVersion: 3, ...sim }` — see specs/M3.md's "JSON dump" section
+ * and specs/M5.md/M6.md's version bumps. Pass `{ derived: true }` to
+ * additionally compute specs/M4.md's `derived` section (family tree x
+ * lexicon, evolved and traced for every leaf, now including
+ * senses/notes/coined/taboo/borrowed). */
 export function toJSON(sim: Simulation, options?: { derived?: boolean }): EtymonDump {
   const dump: EtymonDump = { formatVersion: CURRENT_FORMAT_VERSION, ...sim };
   if (options?.derived) dump.derived = computeDerived(sim);
@@ -156,17 +164,38 @@ function migrateBranchV1ToV2(branch: Branch): Branch {
   return branch;
 }
 
+/** Backfill v1/v2 branches (pre-M6: no `interval` field) with a geography
+ * interval, recursively — specs/M6.md's geography is a pure function of
+ * tree *shape* (root owns [0, 1], each split divides its interval evenly
+ * among its children), so it can always be recomputed after the fact with
+ * zero randomness, even for a dump that predates contact entirely. A real
+ * `generateSimulation` tree is always strictly binary (this generalizes to
+ * N children rather than assuming exactly 2) purely so this stays robust
+ * against hand-built/malformed old dumps, e.g. test fixtures, rather than
+ * throwing on them. Mutates and returns the same tree for convenience. */
+function assignIntervals(branch: Branch, interval: Interval): Branch {
+  (branch as unknown as Record<string, unknown>).interval = interval;
+  const n = branch.children.length;
+  if (n === 0) return branch;
+  const width = (interval.end - interval.start) / n;
+  branch.children.forEach((child, i) => {
+    assignIntervals(child, { start: interval.start + i * width, end: interval.start + (i + 1) * width });
+  });
+  return branch;
+}
+
 /** Inverse of `toJSON`. Validates the format version and required top-level
- * shape, then hands back the embedded Simulation. Accepts both v1 (pre-M5)
- * and v2 dumps: since every field of Simulation is already plain data (no
- * Maps, no functions), no deep reconstruction is needed beyond v1's drift
- * backfill — this is mostly a structural-validation pass, not a transform. */
+ * shape, then hands back the embedded Simulation. Accepts v1 (pre-M5), v2
+ * (pre-M6), and v3 dumps: since every field of Simulation is already plain
+ * data (no Maps, no functions), no deep reconstruction is needed beyond the
+ * v1 drift backfill and the v1/v2 geography backfill — this is mostly a
+ * structural-validation pass, not a transform. */
 export function fromJSON(dump: unknown): Simulation {
   if (typeof dump !== 'object' || dump === null) {
     throw new Error('fromJSON: expected an object');
   }
   const d = dump as Record<string, unknown>;
-  if (d.formatVersion !== 1 && d.formatVersion !== 2) {
+  if (d.formatVersion !== 1 && d.formatVersion !== 2 && d.formatVersion !== 3) {
     throw new Error(`fromJSON: unsupported formatVersion ${JSON.stringify(d.formatVersion)}`);
   }
   for (const field of REQUIRED_FIELDS) {
@@ -175,5 +204,6 @@ export function fromJSON(dump: unknown): Simulation {
   const { formatVersion, ...rest } = d;
   const sim = rest as unknown as Simulation;
   if (formatVersion === 1) migrateBranchV1ToV2(sim.root);
+  if (formatVersion === 1 || formatVersion === 2) assignIntervals(sim.root, rootInterval());
   return sim;
 }

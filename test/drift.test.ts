@@ -301,7 +301,10 @@ describe('M5 acceptance', () => {
     it('drift/taboo/coinage events and reassignments survive toJSON/fromJSON', () => {
       const sim = generateSimulation({ seed: 1, driftEnabled: true });
       const dump = toJSON(sim);
-      expect(dump.formatVersion).toBe(2);
+      // specs/M6.md bumped formatVersion from 2 to 3 (adds contact/borrowing
+      // data); this drift/coinage round-trip still exercises the same M5
+      // reassignment machinery regardless of the version number.
+      expect(dump.formatVersion).toBe(3);
       const roundTripped = fromJSON(JSON.parse(JSON.stringify(dump)));
       expect(JSON.parse(JSON.stringify(toJSON(roundTripped)))).toEqual(JSON.parse(JSON.stringify(dump)));
 

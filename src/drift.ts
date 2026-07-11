@@ -43,12 +43,24 @@ export type LexemeReassignment = {
   century: number;
   concept: string;
   word: { segments: Segment[]; stress: number };
-  cause: 'shift-target' | 'extend-target' | 'coinage' | 'taboo-coinage';
-  /** For shift-target/extend-target: the concept whose word this came from. */
+  /** specs/M6.md adds two causes: 'borrow' (this concept's slot was filled
+   * by an adapted loanword) and 'loan-displacement' (this slot — either
+   * another real concept reached via a drift edge, or a synthetic
+   * `<concept>~archaic` slot from src/contact.ts's `archaicSlot` — holds the
+   * native word a borrowing displaced). */
+  cause: 'shift-target' | 'extend-target' | 'coinage' | 'taboo-coinage' | 'borrow' | 'loan-displacement';
+  /** For shift-target/extend-target: the concept whose word this came from.
+   * For loan-displacement: the concept the loan displaced this word from. */
   sourceConcept?: string;
   /** For coinage/taboo-coinage: the concept id(s) compounded/derived from. */
   parts?: string[];
   origin?: 'compound' | 'derived';
+  /** For 'borrow' only: the lending branch's id, the source form's
+   * romanization at borrowing time, and a human-readable summary of the
+   * segment substitutions adaptation made (or "no adaptation needed"). */
+  fromBranchId?: string;
+  sourceRomanized?: string;
+  adaptationNote?: string;
 };
 
 // ----------------------------------------------------------------- the graph

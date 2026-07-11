@@ -19,6 +19,7 @@
 
 import type { Branch, ChangeEvent, Simulation, SoundChangeEvent } from './history.js';
 import type { DriftEvent, LexemeReassignment } from './drift.js';
+import { archaicSlot } from './contact.js';
 import type { Word } from './phonology.js';
 import { applySubRules } from './changes/apply.js';
 import { romanize } from './romanize.js';
@@ -56,8 +57,14 @@ function isSoundEvent(ev: ChangeEvent): ev is SoundChangeEvent {
   return ev.kind === 'sound';
 }
 
+/** Note: 'shift'/'extend'/'taboo' only — NOT 'borrow' (specs/M6.md's
+ * `BorrowEvent`, which `semanticNotes`/etc. read straight off
+ * `LexemeReassignment` instead — see `pathReassignments`). Before M6,
+ * `ChangeEvent` was just `SoundChangeEvent | DriftEvent`, so "not sound" and
+ * "is drift" were equivalent; with `BorrowEvent` added to the union that's
+ * no longer true, so this checks `kind` explicitly. */
 function isDriftEvent(ev: ChangeEvent): ev is DriftEvent {
-  return ev.kind !== 'sound';
+  return ev.kind === 'shift' || ev.kind === 'extend' || ev.kind === 'taboo';
 }
 
 function pathSoundEvents(sim: Simulation, branchId: string): SoundChangeEvent[] {
@@ -122,7 +129,7 @@ function replaySound(word: Word, events: readonly SoundChangeEvent[]): { form: W
   return { form: cur, steps };
 }
 
-function reassignmentDescription(r: LexemeReassignment): string {
+function reassignmentDescription(sim: Simulation, r: LexemeReassignment): string {
   switch (r.cause) {
     case 'shift-target':
       return `semantic shift: originally '${r.sourceConcept}'; came to mean '${r.concept}'`;
@@ -132,6 +139,12 @@ function reassignmentDescription(r: LexemeReassignment): string {
       return `coined from ${(r.parts ?? []).join(' + ')}`;
     case 'taboo-coinage':
       return `taboo replacement, coined from ${(r.parts ?? []).join(' + ')}`;
+    case 'borrow':
+      return `borrowed from ${branchDisplayLabel(sim, r.fromBranchId!)} "${r.sourceRomanized}" (${r.adaptationNote})`;
+    case 'loan-displacement':
+      return r.concept === archaicSlot(r.sourceConcept ?? '')
+        ? `archaic/register variant, displaced by a loanword for '${r.sourceConcept}'`
+        : `native word for '${r.sourceConcept}', displaced by a loanword`;
   }
 }
 
@@ -151,7 +164,7 @@ function resolveConcept(sim: Simulation, conceptId: string, branchId: string): {
   const semanticStep: TraceStep = {
     century: reassignment.century,
     catalogId: '',
-    description: reassignmentDescription(reassignment),
+    description: reassignmentDescription(sim, reassignment),
     form: base,
     romanized: romanize(base),
     kind: 'semantic',
@@ -192,6 +205,10 @@ export function semanticNotes(sim: Simulation, conceptId: string, branchId: stri
   for (const r of pathReassignments(sim, branchId, conceptId)) {
     if (r.cause === 'coinage' || r.cause === 'taboo-coinage') {
       notes.push(`coined c. year ${r.century * 100} from ${(r.parts ?? []).join(' + ')}`);
+    } else if (r.cause === 'borrow') {
+      notes.push(`borrowed from ${branchDisplayLabel(sim, r.fromBranchId!)}, c. year ${r.century * 100}`);
+    } else if (r.cause === 'loan-displacement') {
+      notes.push(`archaic/register variant (displaced by a loanword for '${r.sourceConcept}', c. year ${r.century * 100})`);
     }
   }
   return notes;
@@ -247,7 +264,39 @@ export function isCognate(sim: Simulation, conceptId: string, branchId: string):
   return latestReassignment(sim, branchId, conceptId) === undefined;
 }
 
-export type CognateRow = { branchId: string; name: string; form: Word; cognate: boolean };
+/** True if `conceptId`'s current word in `branchId` is a loan (specs/M6.md's
+ * `cognates` `‡` marker, distinct from M5's coined `†`). */
+export function isBorrowed(sim: Simulation, conceptId: string, branchId: string): boolean {
+  return latestReassignment(sim, branchId, conceptId)?.cause === 'borrow';
+}
+
+export type LoanInfo = { century: number; fromBranchId: string; fromLabel: string };
+
+/** If `conceptId`'s current word in `branchId` is a loan, its century and
+ * lending branch (specs/M6.md: "`dict` marks loans with their source
+ * language and century"); `null` if it isn't. */
+export function loanInfo(sim: Simulation, conceptId: string, branchId: string): LoanInfo | null {
+  const r = latestReassignment(sim, branchId, conceptId);
+  if (!r || r.cause !== 'borrow' || !r.fromBranchId) return null;
+  return { century: r.century, fromBranchId: r.fromBranchId, fromLabel: branchDisplayLabel(sim, r.fromBranchId) };
+}
+
+/** Display label for any branch id, leaf or not (specs/M6.md: a lending
+ * branch may itself have split further after the loan happened, so it isn't
+ * always a leaf by the time we render). Root gets the family name; a leaf
+ * gets its assigned name; any other (internal) branch falls back to
+ * "branch to year N", mirroring src/render.ts's `branchLabel` for Branch
+ * objects — this is the id-keyed counterpart query functions need since
+ * they only ever have a bare branch id (e.g. a `LexemeReassignment`'s
+ * `fromBranchId`), not the Branch object itself. */
+export function branchDisplayLabel(sim: Simulation, branchId: string): string {
+  if (branchId === sim.root.id) return sim.familyName;
+  const path = pathTo(sim, branchId);
+  const branch = path[path.length - 1]!;
+  return branch.children.length === 0 ? (branch.name ?? branch.id) : `branch to year ${branch.end * 100}`;
+}
+
+export type CognateRow = { branchId: string; name: string; form: Word; cognate: boolean; borrowed: boolean };
 
 /** One row per leaf, in tree order. */
 export function cognates(sim: Simulation, conceptId: string): CognateRow[] {
@@ -256,5 +305,63 @@ export function cognates(sim: Simulation, conceptId: string): CognateRow[] {
     name: leaf.name ?? leaf.id,
     form: formIn(sim, conceptId, leaf.id),
     cognate: isCognate(sim, conceptId, leaf.id),
+    borrowed: isBorrowed(sim, conceptId, leaf.id),
   }));
+}
+
+// ------------------------------------------------------------- doublets
+
+/** specs/M6.md's `doublets` query: concepts where `branchId` holds both an
+ * inherited/native line and a borrowed line — the etymological money shot
+ * (shirt/skirt). `native` names the concept (or synthetic slot id) the
+ * displaced native word now lives under: either the borrowed-over concept's
+ * own id (drift never had anywhere to shift it, so it was demoted onto a
+ * synthetic `<concept>~archaic` slot) or a different real concept it was
+ * shifted into via a drift edge — `kind` tells the two cases apart. Both
+ * `concept` (the borrowed line) and `native.home` (the native line) are
+ * valid ids to hand to `trace`/`formIn` directly; that they replay
+ * correctly there is specs/M6.md's acceptance criterion 4. */
+export type DoubletEntry = {
+  concept: string;
+  native: { home: string; romanized: string; kind: 'archaic' | 'displaced' };
+  borrowedRomanized: string;
+  fromBranchId: string;
+  fromLabel: string;
+  century: number;
+};
+
+export function doublets(sim: Simulation, branchId: string): DoubletEntry[] {
+  const path = pathTo(sim, branchId);
+  const allReassignments = path.flatMap((b) => b.reassignments);
+
+  // Chronological, so a later Map.set for the same key naturally overwrites
+  // an earlier one — "latest reassignment wins", matching `latestReassignment`
+  // elsewhere in this file.
+  const latestBorrowByConcept = new Map<string, LexemeReassignment>();
+  for (const r of allReassignments) if (r.cause === 'borrow') latestBorrowByConcept.set(r.concept, r);
+
+  const latestDisplacementBySource = new Map<string, LexemeReassignment>();
+  for (const r of allReassignments) {
+    if (r.cause === 'loan-displacement' && r.sourceConcept) latestDisplacementBySource.set(r.sourceConcept, r);
+  }
+
+  const out: DoubletEntry[] = [];
+  for (const [concept, borrowR] of latestBorrowByConcept) {
+    const displacement = latestDisplacementBySource.get(concept);
+    if (!displacement || !borrowR.fromBranchId) continue; // defensive; borrowStep always pairs these
+    const nativeHome = displacement.concept;
+    out.push({
+      concept,
+      native: {
+        home: nativeHome,
+        romanized: romanize(formIn(sim, nativeHome, branchId)),
+        kind: nativeHome === archaicSlot(concept) ? 'archaic' : 'displaced',
+      },
+      borrowedRomanized: romanize(formIn(sim, concept, branchId)),
+      fromBranchId: borrowR.fromBranchId,
+      fromLabel: branchDisplayLabel(sim, borrowR.fromBranchId),
+      century: borrowR.century,
+    });
+  }
+  return out.sort((a, b) => a.concept.localeCompare(b.concept));
 }

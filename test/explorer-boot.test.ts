@@ -7,7 +7,9 @@
 // would pass every one of them while producing a visibly broken page.
 // Here we extract the <script> body, evaluate it with minimal document/
 // window stubs, and assert the initial render actually populated the
-// panels. When M6 adds a third event shape, this test is the tripwire.
+// panels. specs/M6.md adds a fourth event shape (`BorrowEvent`, also a flat
+// `.note` — see src/contact.ts), so the "drift enabled" simulation below
+// also enables contact, keeping this test a tripwire for that shape too.
 import { describe, expect, it } from 'vitest';
 import { generateSimulation } from '../src/history.js';
 import { toJSON } from '../src/serialize.js';
@@ -53,8 +55,8 @@ function extractScript(html: string): string {
 }
 
 describe('explorer boot', () => {
-  it('the embedded script renders all panels without throwing (drift enabled)', () => {
-    const sim = generateSimulation({ seed: 42, driftEnabled: true });
+  it('the embedded script renders all panels without throwing (drift + contact enabled)', () => {
+    const sim = generateSimulation({ seed: 42, driftEnabled: true, contactEnabled: true });
     const html = embedDump(toJSON(sim, { derived: true }));
     const script = extractScript(html);
     const dom = makeStubDom();

@@ -26,6 +26,15 @@ import {
   type DriftState,
   type LexemeReassignment,
 } from './drift.js';
+import {
+  DEFAULT_CONTACT_CONFIG,
+  adjacentPairs,
+  borrowStep,
+  rootInterval,
+  splitInterval,
+  type BorrowEvent,
+  type Interval,
+} from './contact.js';
 
 export type SimConfig = {
   seed: number;
@@ -42,6 +51,14 @@ export type SimConfig = {
   driftEnabled: boolean;
   driftChance: number; // default 0.10 /branch/century
   tabooChance: number; // default 0.02 /branch/century
+  /** specs/M6.md: contact/borrowing between adjacent living branches.
+   * Defaults to `false` here (library default), mirroring `driftEnabled` —
+   * every existing direct `generateSimulation({seed})` caller (including
+   * every pre-M6 test/golden) is unaffected; src/cli.ts's commands default
+   * it to `true` (opt-out via `--no-contact`), which is where specs/M6.md's
+   * user-facing flag actually lives. */
+  contactEnabled: boolean;
+  borrowChance: number; // default 0.04 /adjacent branch pair/century
 };
 
 export const DEFAULT_SIM_CONFIG: Omit<SimConfig, 'seed'> = {
@@ -52,6 +69,8 @@ export const DEFAULT_SIM_CONFIG: Omit<SimConfig, 'seed'> = {
   driftEnabled: false,
   driftChance: DEFAULT_DRIFT_CONFIG.driftChance,
   tabooChance: DEFAULT_DRIFT_CONFIG.tabooChance,
+  contactEnabled: false,
+  borrowChance: DEFAULT_CONTACT_CONFIG.borrowChance,
 };
 
 /** The instantiated, JSON-serializable rule data for one applied change —
@@ -66,12 +85,18 @@ export type SoundChangeEvent = { kind: 'sound'; century: number; change: Applied
  * sound-change event and the new drift/taboo events, in one chronological
  * per-branch log. Sound-change replay (src/query.ts) filters to `kind ===
  * 'sound'` and is otherwise untouched — see that file's `pathEvents`. */
-export type ChangeEvent = SoundChangeEvent | DriftEvent;
+export type ChangeEvent = SoundChangeEvent | DriftEvent | BorrowEvent;
 
 export type Branch = {
   id: string; // 'root', 'root.0', 'root.0.1', …
   start: number;
   end: number;
+  /** specs/M6.md's geography: this branch's sub-interval of the root's
+   * [0, 1] span. Assigned once, at branch creation (root gets the whole
+   * span; a split's two children get the left/right halves — see
+   * src/contact.ts's `rootInterval`/`splitInterval`), and never changes
+   * afterward. Purely a function of tree shape — no randomness involved. */
+  interval: Interval;
   events: ChangeEvent[];
   paradigmNotes: ParadigmNote[];
   /** specs/M5.md's erosion mechanism: every time a concept's word "cell" is
@@ -247,7 +272,16 @@ export function generateSimulation(config: Partial<Omit<SimConfig, 'seed'>> & { 
   const inventory = generateInventory(streams.phonology);
   const protoLexicon = generateLexicon(inventory, CONCEPTS, streams.lexicon);
 
-  const rootBranch: Branch = { id: 'root', start: 0, end: 0, events: [], paradigmNotes: [], reassignments: [], children: [] };
+  const rootBranch: Branch = {
+    id: 'root',
+    start: 0,
+    end: 0,
+    interval: rootInterval(),
+    events: [],
+    paradigmNotes: [],
+    reassignments: [],
+    children: [],
+  };
   const rootActive: ActiveBranch = {
     id: 'root',
     start: 0,
@@ -264,10 +298,10 @@ export function generateSimulation(config: Partial<Omit<SimConfig, 'seed'>> & { 
   let active: ActiveBranch[] = [rootActive];
   let leafCount = 1;
 
-  const makeChild = (parent: ActiveBranch, id: string, startCentury: number): ActiveBranch => ({
+  const makeChild = (parent: ActiveBranch, id: string, startCentury: number, interval: Interval): ActiveBranch => ({
     id,
     start: startCentury,
-    branch: { id, start: startCentury, end: startCentury, events: [], paradigmNotes: [], reassignments: [], children: [] },
+    branch: { id, start: startCentury, end: startCentury, interval, events: [], paradigmNotes: [], reassignments: [], children: [] },
     stream: streams.branch(id),
     driftStream: streams.drift(id),
     driftState: cloneDriftState(parent.driftState),
@@ -277,8 +311,27 @@ export function generateSimulation(config: Partial<Omit<SimConfig, 'seed'>> & { 
     collapsedRoles: new Set(parent.collapsedRoles),
   });
 
+  // specs/M6.md: one persistent stream per unordered pair of branch ids,
+  // created lazily the first time a pair is drawn from and reused every
+  // century thereafter (mirroring how `streams.branch(id)`/`streams.drift(id)`
+  // are instantiated once per branch and then advanced in place) — a fresh
+  // `Stream` every century would replay the exact same draws each time
+  // instead of advancing, breaking determinism across centuries.
+  const contactStreams = new Map<string, Stream>();
+  const contactStreamFor = (idA: string, idB: string): Stream => {
+    const key = [idA, idB].sort().join('|');
+    let s = contactStreams.get(key);
+    if (!s) {
+      s = streams.contact(idA, idB);
+      contactStreams.set(key, s);
+    }
+    return s;
+  };
+
   for (let century = 1; century <= centuries; century++) {
     const snapshot = active.slice(); // freshly split children never join this century's pass
+
+    // Phase 1: sound change + semantic drift, per branch on its own streams.
     for (const branchState of snapshot) {
       // 1. sound change, on the branch's own stream.
       if (branchState.stream.chance(changeChance)) {
@@ -292,22 +345,49 @@ export function generateSimulation(config: Partial<Omit<SimConfig, 'seed'>> & { 
       // driftChance/tabooChance value) cannot alter the sound-change event
       // sequence pinned by acceptance criterion 1.
       driftStepForBranch(branchState, century, fullConfig, inventory, protoLexicon.affixes);
+    }
 
-      // 2. population split. The chance draw is consumed unconditionally so
-      // a branch's stream consumption stays fully local: if the draw were
-      // gated on the global leafCount, another subtree's splits would shift
-      // this branch's stream position and reshuffle its later history.
-      {
-        const wantsSplit = branchState.stream.chance(splitChance);
-        if (wantsSplit && leafCount < maxLeaves && century <= centuries - 3) {
-          finalizeBranch(branchState, century, protoLexicon);
-          const childA = makeChild(branchState, `${branchState.id}.0`, century);
-          const childB = makeChild(branchState, `${branchState.id}.1`, century);
-          branchState.branch.children.push(childA.branch, childB.branch);
-          const idx = active.indexOf(branchState);
-          active.splice(idx, 1, childA, childB);
-          leafCount += 1;
-        }
+    // Phase 2: contact/borrowing between adjacent living branches (specs/
+    // M6.md), on each pair's own SEPARATE `contact:<idA>|<idB>` stream —
+    // runs BEFORE this century's split decisions (phase 3) so that a branch
+    // which splits this century still passes any loan it just received down
+    // to both children (they clone `workingLexemes`/`semanticLexemes` at
+    // split time); running it after would silently drop the loan into a
+    // branch state about to be discarded.
+    if (fullConfig.contactEnabled) {
+      const living = snapshot.map((s) => ({ id: s.id, interval: s.branch.interval }));
+      const byId = new Map(snapshot.map((s) => [s.id, s] as const));
+      for (const [x, y] of adjacentPairs(living)) {
+        const idA = x.id < y.id ? x.id : y.id;
+        const idB = x.id < y.id ? y.id : x.id;
+        const a = byId.get(idA)!;
+        const b = byId.get(idB)!;
+        const result = borrowStep(century, a, b, contactStreamFor(idA, idB), { borrowChance: fullConfig.borrowChance });
+        if (!result) continue;
+        const dest = result.destId === a.id ? a : b;
+        dest.workingLexemes = result.workingLexemes;
+        dest.semanticLexemes = result.semanticLexemes;
+        for (const ev of result.events) dest.branch.events.push(ev);
+        for (const r of result.reassignments) dest.branch.reassignments.push(r);
+      }
+    }
+
+    // Phase 3: population splits.
+    for (const branchState of snapshot) {
+      // The chance draw is consumed unconditionally so a branch's stream
+      // consumption stays fully local: if the draw were gated on the global
+      // leafCount, another subtree's splits would shift this branch's
+      // stream position and reshuffle its later history.
+      const wantsSplit = branchState.stream.chance(splitChance);
+      if (wantsSplit && leafCount < maxLeaves && century <= centuries - 3) {
+        finalizeBranch(branchState, century, protoLexicon);
+        const [leftInterval, rightInterval] = splitInterval(branchState.branch.interval);
+        const childA = makeChild(branchState, `${branchState.id}.0`, century, leftInterval);
+        const childB = makeChild(branchState, `${branchState.id}.1`, century, rightInterval);
+        branchState.branch.children.push(childA.branch, childB.branch);
+        const idx = active.indexOf(branchState);
+        active.splice(idx, 1, childA, childB);
+        leafCount += 1;
       }
     }
   }
