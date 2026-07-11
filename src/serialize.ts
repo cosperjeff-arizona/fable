@@ -14,6 +14,7 @@ import type { Affix, Lexeme, Lexicon } from './lexicon.js';
 import type { Segment } from './phonology.js';
 import { romanize } from './romanize.js';
 import type { Simulation } from './history.js';
+import { leaves, trace } from './query.js';
 
 export type SerializedWord = { segments: Segment[]; stress: number; romanized: string };
 
@@ -55,13 +56,61 @@ export function serializeLexicon(lexicon: Lexicon): SerializedLexicon {
   return { lexemes, affixes };
 }
 
-export type EtymonDumpV1 = Simulation & { formatVersion: 1 };
+// ---------------------------------------------------------- derived section
+//
+// specs/M4.md's "Dump extension": a `derived` section computed by the real
+// engine (src/query.ts's `formIn`/`trace`) at dump time, so the explorer
+// never has to reimplement sound change — it only ever displays what's
+// already in the JSON. Additive and optional: `fromJSON` passes it through
+// untouched, and dumps without it (pre-M4, or generated with
+// `{ derived: false }`) still validate.
+
+export type DerivedDictionaryEntry = {
+  concept: string;
+  romanized: string; // final form in this leaf
+  trace: { century: number; romanized: string; description: string }[]; // form-altering steps only
+};
+
+export type DerivedLeaf = {
+  branchId: string;
+  name: string;
+  dictionary: DerivedDictionaryEntry[];
+};
+
+export type Derived = { leaves: DerivedLeaf[] };
+
+export type EtymonDumpV1 = Simulation & { formatVersion: 1; derived?: Derived };
 
 const REQUIRED_FIELDS = ['config', 'inventory', 'lexicon', 'familyName', 'root'] as const;
 
-/** `{ formatVersion: 1, ...sim }` — see specs/M3.md's "JSON dump" section. */
-export function toJSON(sim: Simulation): EtymonDumpV1 {
-  return { formatVersion: 1, ...sim };
+/** Compute the `derived` section: for every leaf x concept, the final
+ * romanized form and its form-altering trace steps, via the same
+ * `formIn`/`trace` helpers the CLI's `trace`/`dict` commands use. */
+function computeDerived(sim: Simulation): Derived {
+  return {
+    leaves: leaves(sim).map((leaf) => ({
+      branchId: leaf.id,
+      name: leaf.name ?? leaf.id,
+      dictionary: sim.lexicon.lexemes.map((lexeme) => {
+        const steps = trace(sim, lexeme.concept, leaf.id);
+        const last = steps[steps.length - 1];
+        return {
+          concept: lexeme.concept,
+          romanized: last ? last.romanized : lexeme.word.romanized,
+          trace: steps.map((s) => ({ century: s.century, romanized: s.romanized, description: s.description })),
+        };
+      }),
+    })),
+  };
+}
+
+/** `{ formatVersion: 1, ...sim }` — see specs/M3.md's "JSON dump" section.
+ * Pass `{ derived: true }` to additionally compute specs/M4.md's `derived`
+ * section (family tree x lexicon, evolved and traced for every leaf). */
+export function toJSON(sim: Simulation, options?: { derived?: boolean }): EtymonDumpV1 {
+  const dump: EtymonDumpV1 = { formatVersion: 1, ...sim };
+  if (options?.derived) dump.derived = computeDerived(sim);
+  return dump;
 }
 
 /** Inverse of `toJSON`. Validates the format version and required top-level

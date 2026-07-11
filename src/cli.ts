@@ -5,13 +5,15 @@
 // src/render.ts (pure functions, unit-tested directly); this file is just
 // argv parsing, simulation setup, and I/O.
 //
-// Commands: generate | dict | trace | cognates | tree. Every command
-// re-runs the simulation from --seed unless --from <dump.json> is given.
+// Commands: generate | dict | trace | cognates | tree | explore. Every
+// command re-runs the simulation from --seed unless --from <dump.json> is
+// given.
 
 import { generateSimulation, type Simulation } from './history.js';
 import { leaves } from './query.js';
 import { toJSON, fromJSON } from './serialize.js';
 import { findLeaf, renderCognates, renderDict, renderGenerate, renderTrace, renderTree } from './render.js';
+import { embedDump } from './explorer/template.js';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 // Minimal ambient declarations for the Node surface this CLI touches. No
@@ -74,9 +76,24 @@ function loadSimulation(flags: Record<string, string>): Simulation {
 function cmdGenerate(sim: Simulation, flags: Record<string, string>): void {
   console.log(renderGenerate(sim).join('\n'));
   if (flags.json) {
-    writeFileSync(flags.json, JSON.stringify(toJSON(sim), null, 2));
+    // Always includes `derived` (specs/M4.md): the JSON dump is the one
+    // place the derived section gets computed, so any dump written to disk
+    // is explorer-ready without a second pass.
+    writeFileSync(flags.json, JSON.stringify(toJSON(sim, { derived: true }), null, 2));
     console.log(`\nWrote ${flags.json}`);
   }
+}
+
+/** specs/M4.md's `explore` command: embed a `{ derived: true }` dump into
+ * src/explorer/template.ts's self-contained HTML template and write it out.
+ * The escaping (so a concept/description containing literal "</script>"
+ * text can't break out of the embedded <script> block) lives in
+ * `embedDump` itself, so it's exercised the same way whether the HTML was
+ * produced by this command or directly in a test. */
+function cmdExplore(sim: Simulation, flags: Record<string, string>): void {
+  const out = flags.out ?? 'etymon-explorer.html';
+  writeFileSync(out, embedDump(toJSON(sim, { derived: true })));
+  console.log(`Wrote ${out}`);
 }
 
 function cmdDict(sim: Simulation, langName: string): void {
@@ -98,6 +115,7 @@ Commands:
   trace <concept> --seed N [--lang <name>]
   cognates <concept> --seed N
   tree --seed N
+  explore --seed N [--centuries N] [--max-leaves N] [--out explorer.html]
 
 All commands accept --from dump.json instead of --seed to load a previously
 generated simulation.`;
@@ -136,6 +154,9 @@ function main(): void {
         console.log(renderCognates(loadSimulation(flags), concept).join('\n'));
         break;
       }
+      case 'explore':
+        cmdExplore(loadSimulation(flags), flags);
+        break;
       default:
         console.log(USAGE);
         process.exitCode = 1;

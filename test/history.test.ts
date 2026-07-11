@@ -63,7 +63,9 @@ describe('M3 acceptance', () => {
 
   it('examples/seed42.json matches a fresh seed-42 simulation', () => {
     const onDisk = JSON.parse(readFileSync('examples/seed42.json', 'utf8'));
-    const fresh = JSON.parse(JSON.stringify(toJSON(generateSimulation({ seed: 42 }))));
+    // specs/M4.md: the committed example dump now includes the `derived`
+    // section, so the fresh comparison must compute it too.
+    const fresh = JSON.parse(JSON.stringify(toJSON(generateSimulation({ seed: 42 }), { derived: true })));
     expect(onDisk).toEqual(fresh);
   });
 
