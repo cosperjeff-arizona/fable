@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Etymon core library (M1: phonology + lexicon).",
+  "description": "Etymon core library (M1: phonology + lexicon; M2: sound-change engine; M3: history driver + CLI).",
+  "bin": {
+    "etymon": "dist/src/cli.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "demo": "tsc -p tsconfig.json && node dist/scripts/demo.js"
+    "demo": "tsc -p tsconfig.json && node dist/scripts/demo.js",
+    "cli": "tsc -p tsconfig.json && node dist/src/cli.js"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
