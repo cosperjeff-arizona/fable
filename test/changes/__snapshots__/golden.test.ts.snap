@@ -1,0 +1,277 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`scripted 10-change history: seed 1 > matches the recorded snapshot 1`] = `
+{
+  "forms": [
+    {
+      "concept": "water",
+      "form": "zei",
+    },
+    {
+      "concept": "fire",
+      "form": "pei",
+    },
+    {
+      "concept": "sun",
+      "form": "bim",
+    },
+    {
+      "concept": "moon",
+      "form": "du~",
+    },
+    {
+      "concept": "king",
+      "form": "fa",
+    },
+    {
+      "concept": "night",
+      "form": "ya",
+    },
+    {
+      "concept": "tongue",
+      "form": "gamri",
+    },
+    {
+      "concept": "people",
+      "form": "zuza",
+    },
+  ],
+  "log": [
+    {
+      "description": "paragoge after final obstruents (∅ > e / obstruent_#)",
+      "id": "paragoge",
+      "step": 1,
+    },
+    {
+      "description": "apocope (final unstressed V > ∅ / C_#)",
+      "id": "apocope",
+      "step": 2,
+    },
+    {
+      "description": "umlaut (a o u > e ø y before a following i/j)",
+      "id": "umlaut",
+      "step": 3,
+    },
+    {
+      "description": "loss of word-final stops",
+      "id": "final-stop-loss",
+      "step": 4,
+    },
+    {
+      "description": "nasal place assimilation (n > m / _labial stop; m > n / _alveolar stop)",
+      "id": "nasal-place-assim",
+      "step": 5,
+    },
+    {
+      "description": "intervocalic voicing (p t k > b d g / V_V)",
+      "id": "voicing",
+      "step": 6,
+    },
+    {
+      "description": "intervocalic spirantization (b d g > v z h / V_V)",
+      "id": "spirantization",
+      "step": 7,
+    },
+    {
+      "description": "velar palatalization (k g > tʃ dʒ / _{i,e,j,y})",
+      "id": "palatalization-velar",
+      "step": 8,
+    },
+    {
+      "description": "loss of h in all positions",
+      "id": "h-loss",
+      "step": 9,
+    },
+    {
+      "description": "final n loss with compensatory nasalization (Vn > Ṽ / _#)",
+      "id": "final-n-loss-with-nasalization",
+      "step": 10,
+    },
+  ],
+  "seed": 1,
+}
+`;
+
+exports[`scripted 10-change history: seed 42 > matches the recorded snapshot 1`] = `
+{
+  "forms": [
+    {
+      "concept": "water",
+      "form": "pibëm",
+    },
+    {
+      "concept": "fire",
+      "form": "has",
+    },
+    {
+      "concept": "sun",
+      "form": "tën",
+    },
+    {
+      "concept": "moon",
+      "form": "jestër",
+    },
+    {
+      "concept": "king",
+      "form": "gëf",
+    },
+    {
+      "concept": "night",
+      "form": "mümp",
+    },
+    {
+      "concept": "tongue",
+      "form": "dëh",
+    },
+    {
+      "concept": "people",
+      "form": "jes",
+    },
+  ],
+  "log": [
+    {
+      "description": "fronting of u (u > y)",
+      "id": "fronting-u",
+      "step": 1,
+    },
+    {
+      "description": "apocope (final unstressed V > ∅ / C_#)",
+      "id": "apocope",
+      "step": 2,
+    },
+    {
+      "description": "final devoicing (b d g v z > p t k f s / _#)",
+      "id": "final-devoicing",
+      "step": 3,
+    },
+    {
+      "description": "intervocalic voicing (p t k > b d g / V_V)",
+      "id": "voicing",
+      "step": 4,
+    },
+    {
+      "description": "loss of word-final stops",
+      "id": "final-stop-loss",
+      "step": 5,
+    },
+    {
+      "description": "syncope (medial unstressed V > ∅ between single Cs)",
+      "id": "syncope",
+      "step": 6,
+    },
+    {
+      "description": "velar palatalization (k g > tʃ dʒ / _{i,e,j,y})",
+      "id": "palatalization-velar",
+      "step": 7,
+    },
+    {
+      "description": "umlaut (a o u > e ø y before a following i/j)",
+      "id": "umlaut",
+      "step": 8,
+    },
+    {
+      "description": "reduction of unstressed non-low vowels to schwa",
+      "id": "unstressed-vowel-reduction",
+      "step": 9,
+    },
+    {
+      "description": "apocope (final unstressed V > ∅ / C_#)",
+      "id": "apocope",
+      "step": 10,
+    },
+  ],
+  "seed": 42,
+}
+`;
+
+exports[`scripted 10-change history: seed 2026 > matches the recorded snapshot 1`] = `
+{
+  "forms": [
+    {
+      "concept": "water",
+      "form": "gëlëk",
+    },
+    {
+      "concept": "fire",
+      "form": "koy",
+    },
+    {
+      "concept": "sun",
+      "form": "für",
+    },
+    {
+      "concept": "moon",
+      "form": "nü",
+    },
+    {
+      "concept": "king",
+      "form": "tis",
+    },
+    {
+      "concept": "night",
+      "form": "üv",
+    },
+    {
+      "concept": "tongue",
+      "form": "jirën",
+    },
+    {
+      "concept": "people",
+      "form": "mip",
+    },
+  ],
+  "log": [
+    {
+      "description": "fronting of u (u > y)",
+      "id": "fronting-u",
+      "step": 1,
+    },
+    {
+      "description": "fortition of initial glide (j > dʒ / #_)",
+      "id": "glide-fortition",
+      "step": 2,
+    },
+    {
+      "description": "chain raising (o > u, a > o)",
+      "id": "chain-raising",
+      "step": 3,
+    },
+    {
+      "description": "intervocalic spirantization (b d g > v z h / V_V)",
+      "id": "spirantization",
+      "step": 4,
+    },
+    {
+      "description": "apocope (final unstressed V > ∅ / C_#)",
+      "id": "apocope",
+      "step": 5,
+    },
+    {
+      "description": "degemination (identical CC > C)",
+      "id": "degemination",
+      "step": 6,
+    },
+    {
+      "description": "reduction of unstressed non-low vowels to schwa",
+      "id": "unstressed-vowel-reduction",
+      "step": 7,
+    },
+    {
+      "description": "nasal place assimilation (n > m / _labial stop; m > n / _alveolar stop)",
+      "id": "nasal-place-assim",
+      "step": 8,
+    },
+    {
+      "description": "fronting of u (u > y)",
+      "id": "fronting-u",
+      "step": 9,
+    },
+    {
+      "description": "debuccalization of initial s (s > h / #_)",
+      "id": "debuccalization",
+      "step": 10,
+    },
+  ],
+  "seed": 2026,
+}
+`;

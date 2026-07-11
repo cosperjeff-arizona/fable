@@ -56,8 +56,14 @@ const VOWELS: ReadonlyArray<{ q: VowelQuality; symbol: string }> = [
 function consonantKey(q: ConsonantQuality): string {
   return `${q.place}:${q.manner}:${q.voiced ? '1' : '0'}`;
 }
-function vowelKey(q: VowelQuality): string {
-  return `${q.height}:${q.backness}:${q.rounded ? '1' : '0'}:${q.nasal ? '1' : '0'}`;
+// Nasal is deliberately excluded from this key: the table only ever holds
+// nasal:false entries (M1 never generates nasal vowels), and nasal vowels
+// created later by M2's sound changes are looked up by their *oral* base
+// quality, then get the '~' marker appended/parsed separately (see
+// NASAL_MARK below). Keying on nasal would make every nasal quality an
+// unrecognized symbol.
+function vowelKey(q: Omit<VowelQuality, 'nasal'>): string {
+  return `${q.height}:${q.backness}:${q.rounded ? '1' : '0'}`;
 }
 
 const CONSONANT_TO_SYMBOL = new Map<string, string>(CONSONANTS.map(({ q, symbol }) => [consonantKey(q), symbol]));
@@ -68,6 +74,15 @@ const SYMBOL_TO_VOWEL = new Map<string, VowelQuality>(VOWELS.map(({ q, symbol })
 const RESERVED_DIGRAPHS = new Set(['sh', 'ch']);
 const SEPARATOR = "'";
 
+/** Nasal vowels don't get their own table entries — M1 never generates them,
+ * and M2's sound changes (e.g. final-n-loss-with-nasalization) can turn any
+ * oral vowel quality nasal, so a fixed table would need one entry per
+ * quality for no benefit. Instead nasal is a trailing '~' after the (base or
+ * doubled-long) vowel letter, e.g. 'a~' (short nasal a), 'aa~' (long nasal
+ * a). '~' can never be a vowel-letter firstChar, so it can't collide with
+ * the long-vowel-doubling convention; see needsSeparator's doc comment. */
+const NASAL_MARK = '~';
+
 function symbolFor(seg: Segment): string {
   if (isConsonant(seg)) {
     const symbol = CONSONANT_TO_SYMBOL.get(consonantKey(seg));
@@ -76,7 +91,8 @@ function symbolFor(seg: Segment): string {
   }
   const base = VOWEL_TO_SYMBOL.get(vowelKey(seg));
   if (!base) throw new Error(`romanize: no symbol for vowel ${JSON.stringify(seg)}`);
-  return seg.long ? base + base : base;
+  const withLength = seg.long ? base + base : base;
+  return seg.nasal ? withLength + NASAL_MARK : withLength;
 }
 
 /** Would concatenating symbolA directly before symbolB (both from distinct
@@ -137,15 +153,17 @@ export function parse(s: string): Word {
     if (VOWEL_LETTERS.has(c) && s[i + 1] === c) {
       const q = SYMBOL_TO_VOWEL.get(c);
       if (!q) throw new Error(`parse: unknown vowel letter "${c}"`);
-      segments.push({ type: 'V', ...q, long: true });
-      i += 2;
+      const nasal = s[i + 2] === NASAL_MARK;
+      segments.push({ type: 'V', ...q, long: true, nasal });
+      i += nasal ? 3 : 2;
       continue;
     }
     if (VOWEL_LETTERS.has(c)) {
       const q = SYMBOL_TO_VOWEL.get(c);
       if (!q) throw new Error(`parse: unknown vowel letter "${c}"`);
-      segments.push({ type: 'V', ...q, long: false });
-      i += 1;
+      const nasal = s[i + 1] === NASAL_MARK;
+      segments.push({ type: 'V', ...q, long: false, nasal });
+      i += nasal ? 2 : 1;
       continue;
     }
     const q = SYMBOL_TO_CONSONANT.get(c);

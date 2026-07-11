@@ -103,19 +103,25 @@ const CONSONANT_TABLE: ReadonlyArray<{ seg: Omit<Consonant, 'type'>; symbol: str
 
 const SCHWA: Omit<Vowel, 'type' | 'long'> = { height: 'mid', backness: 'central', rounded: false, nasal: false };
 
-function baseVowelKey(v: Omit<Vowel, 'type' | 'long'>): string {
-  return `${v.height}:${v.backness}:${v.rounded ? '1' : '0'}:${v.nasal ? '1' : '0'}`;
+// Nasal is excluded from this key on purpose: the table only holds oral
+// qualities (M1 never generates nasal vowels), and nasal vowels created
+// later by M2's sound changes are looked up by their oral base quality,
+// then get a trailing '~' appended in symbolFor — matching romanize.ts's
+// NASAL_MARK convention. Keying on nasal would make every nasal quality an
+// unrecognized symbol.
+function baseVowelKey(v: Omit<Vowel, 'type' | 'long' | 'nasal'>): string {
+  return `${v.height}:${v.backness}:${v.rounded ? '1' : '0'}`;
 }
 
 const VOWEL_SYMBOLS = new Map<string, string>([
-  [baseVowelKey({ height: 'high', backness: 'front', rounded: false, nasal: false }), 'i'],
-  [baseVowelKey({ height: 'mid', backness: 'front', rounded: false, nasal: false }), 'e'],
-  [baseVowelKey({ height: 'low', backness: 'central', rounded: false, nasal: false }), 'a'],
-  [baseVowelKey({ height: 'mid', backness: 'back', rounded: true, nasal: false }), 'o'],
-  [baseVowelKey({ height: 'high', backness: 'back', rounded: true, nasal: false }), 'u'],
+  [baseVowelKey({ height: 'high', backness: 'front', rounded: false }), 'i'],
+  [baseVowelKey({ height: 'mid', backness: 'front', rounded: false }), 'e'],
+  [baseVowelKey({ height: 'low', backness: 'central', rounded: false }), 'a'],
+  [baseVowelKey({ height: 'mid', backness: 'back', rounded: true }), 'o'],
+  [baseVowelKey({ height: 'high', backness: 'back', rounded: true }), 'u'],
   [baseVowelKey(SCHWA), 'ë'], // ë, matching romanize.ts's schwa symbol
-  [baseVowelKey({ height: 'high', backness: 'front', rounded: true, nasal: false }), 'ü'], // ü (vowel /y/)
-  [baseVowelKey({ height: 'mid', backness: 'front', rounded: true, nasal: false }), 'ö'], // ö (vowel /ø/)
+  [baseVowelKey({ height: 'high', backness: 'front', rounded: true }), 'ü'], // ü (vowel /y/)
+  [baseVowelKey({ height: 'mid', backness: 'front', rounded: true }), 'ö'], // ö (vowel /ø/)
 ]);
 
 const CONSONANT_SYMBOLS = new Map<string, string>(
@@ -133,7 +139,8 @@ export function symbolFor(seg: Segment): string {
   }
   const base = VOWEL_SYMBOLS.get(baseVowelKey(seg));
   if (!base) return `[${segKey(seg)}]`;
-  return seg.long ? base + base : base;
+  const withLength = seg.long ? base + base : base;
+  return seg.nasal ? withLength + '~' : withLength;
 }
 
 // ---------------------------------------------------------------- inventory
@@ -274,6 +281,36 @@ export function generateInventory(stream: Stream): Inventory {
     return { consonants, vowels, phonotactics };
   }
   throw new Error('generateInventory: could not sample a consonant inventory within bounds');
+}
+
+// ---------------------------------------------------------------- syllables
+
+/** A syllable is a half-open segment index range [start, end) plus the
+ * index of its vowel nucleus. Consonant-run boundaries between two nuclei
+ * are split at the midpoint (a coarse but adequate approximation for M2's
+ * stress/syncope logic, which only cares about "is this vowel word-medial
+ * and singly-flanked" — see specs/M2.md's syllabify note). */
+export type Syllable = { start: number; end: number; nucleus: number };
+
+/** Split `word` into syllables, one per vowel. Only used by M2's sound-change
+ * layer for stress-shift bookkeeping; rule *environments* never consult
+ * syllable structure directly (specs/M2.md: "no syllable structure in v1
+ * environments"). */
+export function syllabify(word: Word): Syllable[] {
+  const segs = word.segments;
+  const nuclei: number[] = [];
+  segs.forEach((s, i) => {
+    if (isVowel(s)) nuclei.push(i);
+  });
+  if (nuclei.length === 0) return [];
+  const syllables: Syllable[] = [];
+  for (let n = 0; n < nuclei.length; n++) {
+    const nucleus = nuclei[n]!;
+    const start = n === 0 ? 0 : Math.floor((nuclei[n - 1]! + nucleus) / 2) + 1;
+    const end = n === nuclei.length - 1 ? segs.length : Math.floor((nucleus + nuclei[n + 1]!) / 2) + 1;
+    syllables.push({ start, end, nucleus });
+  }
+  return syllables;
 }
 
 // ------------------------------------------------------------ legal words
