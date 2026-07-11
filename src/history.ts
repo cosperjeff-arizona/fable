@@ -199,9 +199,13 @@ export function generateSimulation(config: Partial<Omit<SimConfig, 'seed'>> & { 
         if (change) applyChangeToBranch(branchState, change, century, protoLexicon);
       }
 
-      // 2. population split.
-      if (leafCount < maxLeaves && century <= centuries - 3) {
-        if (branchState.stream.chance(splitChance)) {
+      // 2. population split. The chance draw is consumed unconditionally so
+      // a branch's stream consumption stays fully local: if the draw were
+      // gated on the global leafCount, another subtree's splits would shift
+      // this branch's stream position and reshuffle its later history.
+      {
+        const wantsSplit = branchState.stream.chance(splitChance);
+        if (wantsSplit && leafCount < maxLeaves && century <= centuries - 3) {
           finalizeBranch(branchState, century, protoLexicon);
           const childA = makeChild(branchState, `${branchState.id}.0`, century);
           const childB = makeChild(branchState, `${branchState.id}.1`, century);

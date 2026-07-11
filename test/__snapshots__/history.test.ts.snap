@@ -1,0 +1,186 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`M3 acceptance > golden generate output, seed 1 1`] = `
+"ETYMON — seed 1
+Family: Proto-Gamrit (6 daughter languages, 2000 years)
+
+Family tree:
+  Proto-Gamrit  [0–100]
+  ├─ (split, year 400)  [100–400]
+  │  ├─ (split, year 700)  [400–700]
+  │  │  ├─ Zudap  [700–2000]
+  │  │  └─ Züzap  [700–2000]
+  │  └─ (split, year 500)  [400–500]
+  │     ├─ Zud  [500–2000]
+  │     └─ (split, year 600)  [500–600]
+  │        ├─ Zuda  [600–2000]
+  │        └─ Zurap  [600–2000]
+  └─ Zudep  [100–2000]
+
+Sound changes by branch:
+  [branch to year 400] year 400: nasal place assimilation (n > m / _labial stop; m > n / _alveolar stop)
+  [branch to year 700] year 500: final devoicing (b d g v z > p t k f s / _#)
+  [Zudap] year 800: total assimilation of nt > tt
+  [Zudap] year 1000: intervocalic voicing (p t k > b d g / V_V)
+  [Zudap] year 1500: apocope (final unstressed V > ∅ / C_#)
+  [Züzap] year 900: velar palatalization (k g > tʃ dʒ / _{i,e,j,y})
+  [Züzap] year 1100: intervocalic spirantization (b d g > v z h / V_V)
+  [Züzap] year 1200: umlaut (a o u > e ø y before a following i/j)
+  [Züzap] year 1400: fronting of u (u > y)
+  [Züzap] year 2000: debuccalization of initial s (s > h / #_)
+  [Zud] year 600: syncope (medial unstressed V > ∅ between single Cs)
+  [Zud] year 800: final devoicing (b d g v z > p t k f s / _#)
+  [Zud] year 1300: umlaut (a o u > e ø y before a following i/j)
+  [Zud] year 1500: reduction of unstressed non-low vowels to schwa
+  [Zud] year 1600: loss of word-final stops
+  [Zud] year 1700: raising of e (e > i)
+  [Zud] year 1800: rhotacism (s z > r / V_V)
+  [Zud] year 2000: apocope (final unstressed V > ∅ / C_#)
+  [Zuda] year 700: alveolar palatalization (t d s > tʃ dʒ ʃ / _{i,j}) (rarer variant)
+  [Zuda] year 800: intervocalic voicing (p t k > b d g / V_V)
+  [Zuda] year 1100: umlaut (a o u > e ø y before a following i/j)
+  [Zuda] year 1300: loss of word-final stops
+  [Zuda] year 1400: degemination (identical CC > C)
+  [Zuda] year 1500: syncope (medial unstressed V > ∅ between single Cs)
+  [Zuda] year 1800: raising of e (e > i)
+  [Zurap] year 1200: intervocalic spirantization (b d g > v z h / V_V)
+  [Zurap] year 1300: rhotacism (s z > r / V_V)
+  [Zurap] year 1400: loss of h in all positions
+  [Zurap] year 1500: syncope (medial unstressed V > ∅ between single Cs)
+  [Zurap] year 1600: debuccalization of initial s (s > h / #_)
+  [Zurap] year 1900: intervocalic voicing (p t k > b d g / V_V)
+  [Zurap] year 2000: final devoicing (b d g v z > p t k f s / _#)
+  [Zudep] year 300: fronting of a (a > e), umlaut-free systems only
+  [Zudep] year 400: final devoicing (b d g v z > p t k f s / _#)
+  [Zudep] year 700: nasal place assimilation (n > m / _labial stop; m > n / _alveolar stop)
+  [Zudep] year 1100: intervocalic voicing (p t k > b d g / V_V)
+  [Zudep] year 1200: apocope (final unstressed V > ∅ / C_#)
+  [Zudep] year 1800: obstruent cluster voicing assimilation (agrees with a following obstruent)
+  [Zudep] year 2000: degemination (identical CC > C)"
+`;
+
+exports[`M3 acceptance > golden generate output, seed 42 1`] = `
+"ETYMON — seed 42
+Family: Proto-Dëhido (6 daughter languages, 2000 years)
+
+Family tree:
+  Proto-Dëhido  [0–500]
+  ├─ (split, year 600)  [500–600]
+  │  ├─ (split, year 700)  [600–700]
+  │  │  ├─ (split, year 800)  [700–800]
+  │  │  │  ├─ (split, year 900)  [800–900]
+  │  │  │  │  ├─ North Jis  [900–2000]
+  │  │  │  │  └─ Gisi  [900–2000]
+  │  │  │  └─ Ges  [800–2000]
+  │  │  └─ Jiri  [700–2000]
+  │  └─ South Jis  [600–2000]
+  └─ Gese  [500–2000]
+
+Sound changes by branch:
+  [Proto-Dëhido] year 200: fronting of u (u > y)
+  [Proto-Dëhido] year 400: fronting of a (a > e), umlaut-free systems only
+  [Proto-Dëhido] year 500: loss of word-final stops
+  [branch to year 600] year 600: umlaut (a o u > e ø y before a following i/j)
+  [branch to year 900] year 900: intervocalic voicing (p t k > b d g / V_V)
+  [North Jis] year 1000: apocope (final unstressed V > ∅ / C_#)
+  [North Jis] year 1200: chain raising (o > u, a > o)
+  [North Jis] year 1300: velar palatalization (k g > tʃ dʒ / _{i,e,j,y})
+  [North Jis] year 1400: intervocalic spirantization (b d g > v z h / V_V)
+  [North Jis] year 1700: obstruent cluster voicing assimilation (agrees with a following obstruent)
+  [North Jis] year 1800: raising of e (e > i)
+  [North Jis] year 1900: umlaut (a o u > e ø y before a following i/j)
+  [Gisi] year 1200: alveolar palatalization (t d s > tʃ dʒ ʃ / _{i,j}) (rarer variant)
+  [Gisi] year 1400: final n loss with compensatory nasalization (Vn > Ṽ / _#)
+  [Gisi] year 1500: resolution of vowel hiatus (identical V.V > single long V)
+  [Gisi] year 1600: loss of h in all positions
+  [Gisi] year 1900: raising of e (e > i)
+  [Gisi] year 2000: intervocalic spirantization (b d g > v z h / V_V)
+  [Ges] year 1100: syncope (medial unstressed V > ∅ between single Cs)
+  [Ges] year 1200: loss of h in all positions
+  [Ges] year 1300: intervocalic voicing (p t k > b d g / V_V)
+  [Ges] year 1500: obstruent cluster voicing assimilation (agrees with a following obstruent)
+  [Ges] year 1600: apocope (final unstressed V > ∅ / C_#)
+  [Jiri] year 800: loss of h in all positions
+  [Jiri] year 900: raising of e (e > i)
+  [Jiri] year 1000: velar palatalization (k g > tʃ dʒ / _{i,e,j,y})
+  [Jiri] year 1300: rhotacism (s z > r / V_V)
+  [Jiri] year 1600: umlaut (a o u > e ø y before a following i/j)
+  [Jiri] year 1700: obstruent cluster voicing assimilation (agrees with a following obstruent)
+  [Jiri] year 1800: debuccalization of initial s (s > h / #_)
+  [South Jis] year 900: velar palatalization (k g > tʃ dʒ / _{i,e,j,y})
+  [South Jis] year 1000: loss of h in all positions
+  [South Jis] year 1100: apocope (final unstressed V > ∅ / C_#)
+  [South Jis] year 1200: intervocalic spirantization (b d g > v z h / V_V)
+  [South Jis] year 1300: alveolar palatalization (t d s > tʃ dʒ ʃ / _{i,j}) (rarer variant)
+  [South Jis] year 1400: reduction of unstressed non-low vowels to schwa
+  [South Jis] year 1500: intervocalic voicing (p t k > b d g / V_V)
+  [South Jis] year 1600: raising of e (e > i)
+  [Gese] year 900: alveolar palatalization (t d s > tʃ dʒ ʃ / _{i,j}) (rarer variant)
+  [Gese] year 1000: intervocalic voicing (p t k > b d g / V_V)
+  [Gese] year 1200: syncope (medial unstressed V > ∅ between single Cs)
+  [Gese] year 1400: loss of h in all positions
+  [Gese] year 1900: intervocalic spirantization (b d g > v z h / V_V)"
+`;
+
+exports[`M3 acceptance > golden generate output, seed 2026 1`] = `
+"ETYMON — seed 2026
+Family: Proto-Yiron (6 daughter languages, 2000 years)
+
+Family tree:
+  Proto-Yiron  [0–200]
+  ├─ (split, year 300)  [200–300]
+  │  ├─ (split, year 400)  [300–400]
+  │  │  ├─ Mip  [400–2000]
+  │  │  └─ North Mipp  [400–2000]
+  │  └─ (split, year 800)  [300–800]
+  │     ├─ North Mippe  [800–2000]
+  │     └─ South Mippe  [800–2000]
+  └─ (split, year 800)  [200–800]
+     ├─ South Mipp  [800–2000]
+     └─ East Mipp  [800–2000]
+
+Sound changes by branch:
+  [Proto-Yiron] year 100: rhotacism (s z > r / V_V)
+  [Proto-Yiron] year 200: final n loss with compensatory nasalization (Vn > Ṽ / _#)
+  [Mip] year 500: intervocalic spirantization (b d g > v z h / V_V)
+  [Mip] year 800: degemination (identical CC > C)
+  [Mip] year 900: chain raising (o > u, a > o)
+  [Mip] year 1000: umlaut (a o u > e ø y before a following i/j)
+  [Mip] year 1100: apocope (final unstressed V > ∅ / C_#)
+  [Mip] year 1200: intervocalic voicing (p t k > b d g / V_V)
+  [Mip] year 1300: final n loss with compensatory nasalization (Vn > Ṽ / _#)
+  [Mip] year 1400: loss of h in all positions
+  [Mip] year 1500: final devoicing (b d g v z > p t k f s / _#)
+  [Mip] year 1700: syncope (medial unstressed V > ∅ between single Cs)
+  [North Mipp] year 700: loss of word-final stops
+  [North Mipp] year 900: nasal vowel height merger (high nasal vowels lower to mid)
+  [North Mipp] year 1000: raising of e (e > i)
+  [North Mipp] year 1500: umlaut (a o u > e ø y before a following i/j)
+  [North Mipp] year 1700: apocope (final unstressed V > ∅ / C_#)
+  [North Mipp] year 1900: intervocalic voicing (p t k > b d g / V_V)
+  [branch to year 800] year 500: velar palatalization (k g > tʃ dʒ / _{i,e,j,y})
+  [branch to year 800] year 800: loss of word-final stops
+  [North Mippe] year 1300: syncope (medial unstressed V > ∅ between single Cs)
+  [North Mippe] year 1600: intervocalic voicing (p t k > b d g / V_V)
+  [North Mippe] year 1800: debuccalization of initial s (s > h / #_)
+  [South Mippe] year 1600: total assimilation of nt > tt
+  [South Mippe] year 1700: obstruent cluster voicing assimilation (agrees with a following obstruent)
+  [South Mippe] year 2000: fortition of initial glide (j > dʒ / #_)
+  [branch to year 800] year 600: intervocalic voicing (p t k > b d g / V_V)
+  [South Mipp] year 900: velar palatalization (k g > tʃ dʒ / _{i,e,j,y})
+  [South Mipp] year 1000: nasal place assimilation (n > m / _labial stop; m > n / _alveolar stop)
+  [South Mipp] year 1200: chain raising (o > u, a > o)
+  [South Mipp] year 1400: syncope (medial unstressed V > ∅ between single Cs)
+  [South Mipp] year 1500: umlaut (a o u > e ø y before a following i/j)
+  [South Mipp] year 1600: apocope (final unstressed V > ∅ / C_#)
+  [South Mipp] year 1800: fronting of u (u > y)
+  [South Mipp] year 1900: nasal vowel height merger (high nasal vowels lower to mid)
+  [East Mipp] year 900: syncope (medial unstressed V > ∅ between single Cs)
+  [East Mipp] year 1000: chain raising (o > u, a > o)
+  [East Mipp] year 1100: obstruent cluster voicing assimilation (agrees with a following obstruent)
+  [East Mipp] year 1300: velar palatalization (k g > tʃ dʒ / _{i,e,j,y})
+  [East Mipp] year 1500: loss of intervocalic glides (j w > ∅ / V_V)
+  [East Mipp] year 1700: fortition of initial glide (j > dʒ / #_)
+  [East Mipp] year 1800: total assimilation of nt > tt
+  [East Mipp] year 2000: apocope (final unstressed V > ∅ / C_#)"
+`;
