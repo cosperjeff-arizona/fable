@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeStreams } from '../src/prng.js';
-import { generateInventory, isLegalWord, wordKey } from '../src/phonology.js';
+import { generateInventory, isLegalWord, segKey, wordKey } from '../src/phonology.js';
 import { generateLexicon } from '../src/lexicon.js';
 import { CONCEPTS, DERIVATIONS } from '../src/concepts.js';
 
@@ -97,6 +97,16 @@ describe('generateLexicon', () => {
       const lexicon = generateLexicon(inventory, CONCEPTS, streams.lexicon);
       const slots = new Set(lexicon.affixes.map((a) => a.slot));
       expect(slots.size).toBe(1);
+    }
+  });
+
+  it('affix forms are pairwise distinct within a lexicon', () => {
+    for (const seed of SEEDS) {
+      const streams = makeStreams(seed);
+      const inventory = generateInventory(streams.phonology);
+      const lexicon = generateLexicon(inventory, CONCEPTS, streams.lexicon);
+      const keys = lexicon.affixes.map((a) => a.form.map(segKey).join('.'));
+      expect(new Set(keys).size).toBe(keys.length);
     }
   });
 });

@@ -1609,7 +1609,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "slot": "suffix",
     },
     {
-      "form": "tu",
+      "form": "ëg",
       "kind": "inflectional",
       "role": "genitive",
       "slot": "suffix",
@@ -1676,7 +1676,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "possicha",
+      "form": "hassicha",
       "id": "ash",
       "origin": "compound",
       "parts": [
@@ -1812,7 +1812,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "jërsipos",
+      "form": "jërsihas",
       "id": "bread",
       "origin": "compound",
       "parts": [
@@ -2025,11 +2025,11 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "jedahem",
+      "form": "aden",
       "id": "earth",
       "origin": "root",
       "parts": null,
-      "stress": 1,
+      "stress": 0,
     },
     {
       "form": "pa",
@@ -2107,7 +2107,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "pos",
+      "form": "has",
       "id": "fire",
       "origin": "root",
       "parts": null,
@@ -2274,7 +2274,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "posnës",
+      "form": "hasnës",
       "id": "hearth",
       "origin": "compound",
       "parts": [
@@ -2354,7 +2354,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "nëmkopos",
+      "form": "deschëkes'has",
       "id": "iron",
       "origin": "compound",
       "parts": [
@@ -2392,7 +2392,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 0,
     },
     {
-      "form": "nëmkotëbi",
+      "form": "deschëkestëbi",
       "id": "knife",
       "origin": "compound",
       "parts": [
@@ -2444,7 +2444,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 0,
     },
     {
-      "form": "posmaki",
+      "form": "hasbosëm",
       "id": "lightning",
       "origin": "compound",
       "parts": [
@@ -2503,7 +2503,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "chumfi",
+      "form": "jestur",
       "id": "moon",
       "origin": "root",
       "parts": null,
@@ -2706,7 +2706,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "chumfiu",
+      "form": "jesturu",
       "id": "round",
       "origin": "derived",
       "parts": [
@@ -2729,21 +2729,21 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "imchi",
+      "form": "rimchi",
       "id": "sand",
       "origin": "root",
       "parts": null,
-      "stress": 0,
+      "stress": 1,
     },
     {
-      "form": "ihemdemrepe",
+      "form": "pibimrepe",
       "id": "sea",
       "origin": "compound",
       "parts": [
         "water",
         "big",
       ],
-      "stress": 0,
+      "stress": 1,
     },
     {
       "form": "rëm",
@@ -2767,7 +2767,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "bijëuntumfise",
+      "form": "tënu'untumfise",
       "id": "shadow",
       "origin": "compound",
       "parts": [
@@ -2777,7 +2777,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "nëmkou",
+      "form": "deschëkesu",
       "id": "sharp",
       "origin": "derived",
       "parts": [
@@ -2814,7 +2814,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "maki",
+      "form": "bosëm",
       "id": "sky",
       "origin": "root",
       "parts": null,
@@ -2917,14 +2917,14 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "kirbe",
+      "form": "pen",
       "id": "star",
       "origin": "root",
       "parts": null,
       "stress": 1,
     },
     {
-      "form": "nëmko",
+      "form": "deschëkes",
       "id": "stone",
       "origin": "root",
       "parts": null,
@@ -2938,7 +2938,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 0,
     },
     {
-      "form": "bijë",
+      "form": "tënu",
       "id": "sun",
       "origin": "root",
       "parts": null,
@@ -3041,7 +3041,7 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "nëmkonës",
+      "form": "deschëkesnës",
       "id": "wall",
       "origin": "compound",
       "parts": [
@@ -3058,11 +3058,11 @@ exports[`golden snapshot: seed 42 > matches the recorded snapshot 1`] = `
       "stress": 1,
     },
     {
-      "form": "ihemdem",
+      "form": "pibim",
       "id": "water",
       "origin": "root",
       "parts": null,
-      "stress": 0,
+      "stress": 1,
     },
     {
       "form": "sëbe",

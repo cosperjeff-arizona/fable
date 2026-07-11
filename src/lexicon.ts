@@ -8,6 +8,7 @@ import {
   isLegalWord,
   isNearCollision,
   isVowel,
+  segKey,
   wordKey,
 } from './phonology.js';
 import { DERIVATIONS, type Concept } from './concepts.js';
@@ -154,12 +155,27 @@ function generateAffixes(inv: Inventory, stream: Stream): Affix[] {
   const inflectionalRoles: InflectionalRole[] = ['plural', 'past', 'genitive'];
   if (stream.chance(0.5)) inflectionalRoles.push('accusative');
 
+  // Affix forms must be pairwise distinct: homophonous affixes across
+  // paradigms would make M2's paradigm-collapse detection ambiguous.
+  const usedForms = new Set<string>();
+  const uniqueForm = (): Segment[] => {
+    for (let tries = 0; tries < 30; tries++) {
+      const form = buildAffixForm(inv, stream);
+      const key = form.map(segKey).join('.');
+      if (!usedForms.has(key)) {
+        usedForms.add(key);
+        return form;
+      }
+    }
+    throw new Error('generateAffixes: could not find a distinct affix form');
+  };
+
   const affixes: Affix[] = [];
   for (const role of derivationalRoles) {
-    affixes.push({ role, kind: 'derivational', slot, form: buildAffixForm(inv, stream) });
+    affixes.push({ role, kind: 'derivational', slot, form: uniqueForm() });
   }
   for (const role of inflectionalRoles) {
-    affixes.push({ role, kind: 'inflectional', slot, form: buildAffixForm(inv, stream) });
+    affixes.push({ role, kind: 'inflectional', slot, form: uniqueForm() });
   }
   return affixes;
 }
