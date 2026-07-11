@@ -124,23 +124,33 @@ Perfect fit for cheap-model implementation because everything is checkable:
 
 ## Milestones (sized for offloading)
 
-Each milestone has crisp acceptance criteria; M2 is the heart and the one I'd want the most
-review on.
+Each milestone has crisp acceptance criteria; M2 is the heart and the one that gets the most
+design attention (see `specs/`).
 
 - **M1 — phonology + lexicon** (port prototype to typed feature system; 200 concepts;
-  morphology). *Accept: golden tests, phonotactic property tests pass.*
-- **M2 — sound-change engine** (feature-based rule application; catalog of 40+ changes with
+  morphology). *Accept: golden tests, phonotactic property tests pass.* Spec: `specs/M1.md`.
+- **M2 — sound-change engine** (feature-based rule application; catalog of ~40 changes with
   plausibility conditioning). *Accept: every catalog change has unit tests with hand-checked
-  before/after forms; conditioning prevents degenerate sequences.*
-- **M3 — history driver** (tree, event logs, per-branch evolution; CLI `generate`/`tree`).
-- **M4 — semantic drift + coinage** (drift graph, replacement, derivation).
-- **M5 — contact** (geography, borrowing, adaptation; `doublets` query).
-- **M6 — outputs** (dictionaries, markdown/JSON/HTML renders, orthographies).
-- **M7 — web explorer** (static HTML artifact).
+  before/after forms; conditioning prevents degenerate sequences.* Spec: `specs/M2.md`.
+- **M3 — history driver** (tree, event logs, per-branch evolution; CLI `generate`/`tree`;
+  JSON dump of a full simulation).
+- **M4 — explorer-lite** (static HTML page reading the M3 JSON dump: family tree,
+  dictionaries, animated trace playback). Pulled forward for demo value and to pressure-test
+  the JSON schema early.
+- **M5 — semantic drift + coinage** (drift graph, taboo replacement, derivation).
+- **M6 — contact** (geography, borrowing, loanword adaptation; `doublets` query).
+- **M7 — outputs + polish** (markdown dictionaries, per-language orthographies, full explorer).
 
-## Open questions for the project owner
+## Decisions (formerly open questions)
 
-1. Scale of ambition for the lexicon: 200 curated concepts (my lean) or a larger generated one?
-2. Web explorer: worth prioritizing earlier for demo value, or keep CLI-first?
-3. Grammar evolution (case systems eroding into word order, like Latin→French) is the most
-   exciting stretch goal but roughly doubles scope. In or out?
+1. **Lexicon scale**: 200 curated concepts, organized by semantic domain. The drift graph and
+   compounding rules only pay off when concepts are chosen to connect; auto-generated bulk
+   would be dead weight.
+2. **Web explorer**: a minimal read-only version is promoted to M4 (right after the history
+   driver). The polished version stays last.
+3. **Grammar evolution**: full syntax evolution is out of scope for v1. However, since
+   inflectional affixes are phonological material, sound change erodes them for free — apocope
+   deletes final vowels and case endings die with them. v1 therefore tracks inflectional
+   paradigms, detects when sound change collapses their distinctions, and reports the
+   typological consequence in each language's profile ("case system collapsed; fixed word
+   order emerged"). Real syntax simulation can bolt on in v2.
