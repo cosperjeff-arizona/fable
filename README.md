@@ -20,7 +20,7 @@ Sample output (seed 7):
 
 ```
 Sample etymologies:
-  Gukm "elg" (blood) < Proto-Hanak *salgit
+  South Gukm "elg" (blood) < Proto-Hanak *salgit
       > halgit   c. year 100: weakening of initial s (s > h / #_)
       > halgi   c. year 200: loss of word-final stops
       > helgi   c. year 400: umlaut: back vowels fronted before i in the next syllable
