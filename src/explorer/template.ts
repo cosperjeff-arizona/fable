@@ -147,10 +147,13 @@ export const EXPLORER_TEMPLATE = `<!doctype html>
     background: var(--muted);
   }
   .timeline-step.proto::before { background: var(--accent); }
+  .timeline-step.semantic::before { background: var(--accent); border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+  .timeline-step.semantic .label { font-style: italic; }
   .timeline-step .form { font-family: var(--mono); font-size: 1rem; }
   .timeline-step.final .form { color: var(--accent); font-weight: 700; font-size: 1.12rem; }
   .timeline-step .label { display: block; color: var(--muted); font-size: 0.82rem; }
   .timeline-step.pending { opacity: 0; }
+  .semantic-notes { font-style: italic; margin: 0.3rem 0 0; }
   .cognate-table-wrap { overflow-x: auto; }
   .cognate-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
   .cognate-table th, .cognate-table td { padding: 0.35rem 0.55rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
@@ -371,13 +374,25 @@ var DUMP = __ETYMON_DUMP_JSON__;
       container.innerHTML = '<p class="muted small">No etymology available.</p>';
       return;
     }
-    var steps = entry.trace;
-    var protoStepHtml = '<div class="timeline-step proto' + (steps.length === 0 ? ' final' : '') + '">' +
-      '<span class="form">*' + escapeHtml(proto.word.romanized) + '</span>' +
-      '<span class="label">' + escapeHtml(dump.familyName) + '</span></div>';
+    var allSteps = entry.trace;
+    // specs/M5.md: a coined/reassigned word's trace starts at its own
+    // reassignment century, not the family proto root — if the first step
+    // is a 'semantic' milestone (coinage, drift shift/extend, taboo), show
+    // *that* as the timeline's genesis node instead of "*protoWord".
+    var hasSemanticGenesis = allSteps.length > 0 && allSteps[0].kind === 'semantic';
+    var genesisStep = hasSemanticGenesis ? allSteps[0] : null;
+    var steps = hasSemanticGenesis ? allSteps.slice(1) : allSteps;
+    var protoStepHtml = genesisStep ?
+      '<div class="timeline-step proto semantic' + (steps.length === 0 ? ' final' : '') + '">' +
+        '<span class="form">' + escapeHtml(genesisStep.romanized) + '</span>' +
+        '<span class="label">year ' + (genesisStep.century * 100) + ' — ' + escapeHtml(genesisStep.description) + '</span></div>' :
+      '<div class="timeline-step proto' + (steps.length === 0 ? ' final' : '') + '">' +
+        '<span class="form">*' + escapeHtml(proto.word.romanized) + '</span>' +
+        '<span class="label">' + escapeHtml(dump.familyName) + '</span></div>';
     var stepsHtml = steps.map(function (step, i) {
       var isLast = i === steps.length - 1;
-      return '<div class="timeline-step' + (isLast ? ' final' : '') + '">' +
+      var cls = 'timeline-step' + (isLast ? ' final' : '') + (step.kind === 'semantic' ? ' semantic' : '');
+      return '<div class="' + cls + '">' +
         '<span class="form">' + escapeHtml(step.romanized) + '</span>' +
         '<span class="label">year ' + (step.century * 100) + ' — ' + escapeHtml(step.description) + '</span></div>';
     }).join('');
@@ -386,12 +401,19 @@ var DUMP = __ETYMON_DUMP_JSON__;
     var cognateCells = dump.derived.leaves.map(function (l) {
       var e = l.dictionary.filter(function (d) { return d.concept === concept; })[0];
       var cls = l.branchId === leafId ? ' class="selected"' : '';
-      return '<td' + cls + '>' + escapeHtml(e ? e.romanized : '—') + '</td>';
+      var mark = e && e.coined ? ' †' : '';
+      return '<td' + cls + '>' + escapeHtml(e ? e.romanized : '—') + escapeHtml(mark) + '</td>';
     }).join('');
+
+    var sensesHtml = (entry.senses && entry.senses.length > 1) ?
+      '<p class="muted small">senses: ' + entry.senses.map(escapeHtml).join(', ') + '</p>' : '';
+    var notesHtml = (entry.notes && entry.notes.length > 0) ?
+      '<p class="muted small semantic-notes">' + entry.notes.map(escapeHtml).join('<br>') + '</p>' : '';
 
     container.innerHTML =
       '<div class="etymology-header"><strong>' + escapeHtml(concept) + '</strong>' +
       (steps.length > 0 ? '<button type="button" id="play-btn">▶ Play</button>' : '') + '</div>' +
+      sensesHtml + notesHtml +
       '<div class="timeline" id="timeline">' + protoStepHtml + stepsHtml + '</div>' +
       '<h2>Cognates</h2>' +
       '<div class="cognate-table-wrap"><table class="cognate-table"><thead><tr>' + cognateHeaders +
@@ -448,7 +470,8 @@ var DUMP = __ETYMON_DUMP_JSON__;
   }
 
   function looksLikeDump(candidate) {
-    return !!candidate && candidate.formatVersion === 1 && !!candidate.root && !!candidate.config && !!candidate.lexicon;
+    return !!candidate && (candidate.formatVersion === 1 || candidate.formatVersion === 2) &&
+      !!candidate.root && !!candidate.config && !!candidate.lexicon;
   }
 
   function handleDroppedFile(file) {

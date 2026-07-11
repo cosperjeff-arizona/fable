@@ -68,7 +68,13 @@ function loadSimulation(flags: Record<string, string>): Simulation {
   const seed = intFlag(flags, 'seed', 42);
   const centuries = intFlag(flags, 'centuries', 20);
   const maxLeaves = intFlag(flags, 'max-leaves', 6);
-  return generateSimulation({ seed, centuries, maxLeaves });
+  // specs/M5.md's "--no-drift" flag: the CLI defaults semantic drift/taboo/
+  // coinage ON (opt-out), unlike the library-level `generateSimulation`
+  // default (off), which exists purely so every pre-M5 direct caller/test
+  // is untouched. Acceptance criterion 1: `--no-drift` reproduces the exact
+  // M3-era output.
+  const driftEnabled = !('no-drift' in flags);
+  return generateSimulation({ seed, centuries, maxLeaves, driftEnabled });
 }
 
 // ------------------------------------------------------------------ commands
@@ -110,12 +116,15 @@ function cmdTrace(sim: Simulation, concept: string, flags: Record<string, string
 const USAGE = `Usage: etymon <command> [options]
 
 Commands:
-  generate --seed N [--centuries N] [--max-leaves N] [--json dump.json]
-  dict <language> --seed N
-  trace <concept> --seed N [--lang <name>]
-  cognates <concept> --seed N
-  tree --seed N
-  explore --seed N [--centuries N] [--max-leaves N] [--out explorer.html]
+  generate --seed N [--centuries N] [--max-leaves N] [--json dump.json] [--no-drift]
+  dict <language> --seed N [--no-drift]
+  trace <concept> --seed N [--lang <name>] [--no-drift]
+  cognates <concept> --seed N [--no-drift]
+  tree --seed N [--no-drift]
+  explore --seed N [--centuries N] [--max-leaves N] [--out explorer.html] [--no-drift]
+
+Semantic drift, taboo replacement, and coinage (specs/M5.md) are on by
+default; pass --no-drift to reproduce pre-M5 output exactly.
 
 All commands accept --from dump.json instead of --seed to load a previously
 generated simulation.`;

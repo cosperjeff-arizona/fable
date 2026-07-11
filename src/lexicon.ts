@@ -225,13 +225,18 @@ function resolveCollision(segments: Segment[], joinIndex: number, inv: Inventory
   throw new Error('resolveCollision: could not resolve a homophone collision after several attempts');
 }
 
-/** Concatenate two lexemes' surface words into a compound word. */
-function compoundWord(a: Lexeme, b: Lexeme, inv: Inventory, stream: Stream, used: Word[]): Word {
+/** Concatenate two lexemes' surface words into a compound word. Exported for
+ * src/drift.ts's coinage machinery (specs/M5.md: "reusing lexicon compound
+ * machinery"), which needs to build fresh compounds from a branch's
+ * *currently evolved* lexemes rather than proto roots. */
+export function compoundWord(a: Lexeme, b: Lexeme, inv: Inventory, stream: Stream, used: Word[]): Word {
   const segments = [...a.word.segments, ...b.word.segments];
   return resolveCollision(segments, a.word.segments.length, inv, stream, used);
 }
 
-function affixDerivedWord(base: Lexeme, affix: Affix, inv: Inventory, stream: Stream, used: Word[]): Word {
+/** Exported for src/drift.ts's coinage fallback chain (generic
+ * diminutive/adjective-izer re-derivation). */
+export function affixDerivedWord(base: Lexeme, affix: Affix, inv: Inventory, stream: Stream, used: Word[]): Word {
   const joinIndex = affix.slot === 'suffix' ? base.word.segments.length : affix.form.length;
   const segments =
     affix.slot === 'suffix' ? [...base.word.segments, ...affix.form] : [...affix.form, ...base.word.segments];

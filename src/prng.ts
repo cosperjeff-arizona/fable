@@ -94,6 +94,13 @@ export type Streams = {
   history: Stream;
   /** Independent stream per branch id, e.g. branch('north-1'). */
   branch(id: string): Stream;
+  /**
+   * specs/M5.md: semantic drift/taboo/coinage sampling draws from a NEW
+   * stream family (`drift:<branchId>`), distinct from `branch:<id>`, so
+   * turning drift on or off (or changing its rates) never perturbs a
+   * single sound-change draw — the M3 goldens stay byte-identical.
+   */
+  drift(id: string): Stream;
 };
 
 /**
@@ -109,6 +116,9 @@ export function makeStreams(seed: number): Streams {
     history: derive('history'),
     branch(id: string): Stream {
       return derive(`branch:${id}`);
+    },
+    drift(id: string): Stream {
+      return derive(`drift:${id}`);
     },
   };
 }

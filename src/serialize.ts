@@ -13,8 +13,8 @@
 import type { Affix, Lexeme, Lexicon } from './lexicon.js';
 import type { Segment } from './phonology.js';
 import { romanize } from './romanize.js';
-import type { Simulation } from './history.js';
-import { leaves, trace } from './query.js';
+import type { Branch, Simulation } from './history.js';
+import { isCoined, isTabooed, leaves, semanticNotes, senses, trace } from './query.js';
 
 export type SerializedWord = { segments: Segment[]; stress: number; romanized: string };
 
@@ -65,10 +65,27 @@ export function serializeLexicon(lexicon: Lexicon): SerializedLexicon {
 // untouched, and dumps without it (pre-M4, or generated with
 // `{ derived: false }`) still validate.
 
+export type DerivedTraceStep = {
+  century: number;
+  romanized: string;
+  description: string;
+  /** specs/M5.md: 'semantic' marks a reassignment milestone (coinage, drift
+   * shift/extend target, or taboo replacement) rather than a sound change.
+   * Optional/additive so v1-shaped consumers that never read it still work. */
+  kind?: 'sound' | 'semantic';
+};
+
 export type DerivedDictionaryEntry = {
   concept: string;
   romanized: string; // final form in this leaf
-  trace: { century: number; romanized: string; description: string }[]; // form-altering steps only
+  trace: DerivedTraceStep[]; // form-altering steps only
+  /** specs/M5.md `dict` extensions — always present from formatVersion 2 on;
+   * absent on dumps that predate M5 (fromJSON backfills nothing here, since
+   * `derived` itself is optional and only ever computed by this module). */
+  senses?: string[];
+  notes?: string[];
+  coined?: boolean;
+  taboo?: boolean;
 };
 
 export type DerivedLeaf = {
@@ -79,13 +96,19 @@ export type DerivedLeaf = {
 
 export type Derived = { leaves: DerivedLeaf[] };
 
-export type EtymonDumpV1 = Simulation & { formatVersion: 1; derived?: Derived };
+/** specs/M5.md: bumped from 1 to 2 to carry drift/taboo/coinage data
+ * (Branch gains `reassignments`; ChangeEvent becomes a `kind`-tagged
+ * union). `fromJSON` still accepts v1 dumps — see `migrateV1ToV2` — and
+ * treats their absent drift data as empty, so no historical dump breaks. */
+export type EtymonDump = Simulation & { formatVersion: 2; derived?: Derived };
 
 const REQUIRED_FIELDS = ['config', 'inventory', 'lexicon', 'familyName', 'root'] as const;
+const CURRENT_FORMAT_VERSION = 2;
 
 /** Compute the `derived` section: for every leaf x concept, the final
  * romanized form and its form-altering trace steps, via the same
- * `formIn`/`trace` helpers the CLI's `trace`/`dict` commands use. */
+ * `formIn`/`trace`/`semanticNotes`/`senses` helpers the CLI's
+ * `trace`/`dict` commands use. */
 function computeDerived(sim: Simulation): Derived {
   return {
     leaves: leaves(sim).map((leaf) => ({
@@ -97,38 +120,60 @@ function computeDerived(sim: Simulation): Derived {
         return {
           concept: lexeme.concept,
           romanized: last ? last.romanized : lexeme.word.romanized,
-          trace: steps.map((s) => ({ century: s.century, romanized: s.romanized, description: s.description })),
+          trace: steps.map((s) => ({ century: s.century, romanized: s.romanized, description: s.description, kind: s.kind })),
+          senses: senses(sim, lexeme.concept, leaf.id),
+          notes: semanticNotes(sim, lexeme.concept, leaf.id),
+          coined: isCoined(sim, lexeme.concept, leaf.id),
+          taboo: isTabooed(sim, lexeme.concept, leaf.id),
         };
       }),
     })),
   };
 }
 
-/** `{ formatVersion: 1, ...sim }` — see specs/M3.md's "JSON dump" section.
- * Pass `{ derived: true }` to additionally compute specs/M4.md's `derived`
- * section (family tree x lexicon, evolved and traced for every leaf). */
-export function toJSON(sim: Simulation, options?: { derived?: boolean }): EtymonDumpV1 {
-  const dump: EtymonDumpV1 = { formatVersion: 1, ...sim };
+/** `{ formatVersion: 2, ...sim }` — see specs/M3.md's "JSON dump" section
+ * and specs/M5.md's version bump. Pass `{ derived: true }` to additionally
+ * compute specs/M4.md's `derived` section (family tree x lexicon, evolved
+ * and traced for every leaf, now including senses/notes/coined/taboo). */
+export function toJSON(sim: Simulation, options?: { derived?: boolean }): EtymonDump {
+  const dump: EtymonDump = { formatVersion: CURRENT_FORMAT_VERSION, ...sim };
   if (options?.derived) dump.derived = computeDerived(sim);
   return dump;
 }
 
+/** Backfill a v1-shaped branch tree (pre-M5: events are bare
+ * `{century,change}` with no `kind`, branches have no `reassignments`) into
+ * v2 shape in place. Mutates and returns the same tree for convenience. */
+function migrateBranchV1ToV2(branch: Branch): Branch {
+  const b = branch as unknown as Record<string, unknown>;
+  const events = (b.events as unknown[]) ?? [];
+  b.events = events.map((ev) => {
+    const e = ev as Record<string, unknown>;
+    return 'kind' in e ? e : { kind: 'sound', ...e };
+  });
+  if (!Array.isArray(b.reassignments)) b.reassignments = [];
+  for (const child of branch.children) migrateBranchV1ToV2(child);
+  return branch;
+}
+
 /** Inverse of `toJSON`. Validates the format version and required top-level
- * shape, then hands back the embedded Simulation. Since every field of
- * Simulation is already plain data (no Maps, no functions), no deep
- * reconstruction is needed — this is a structural-validation pass, not a
- * transform. */
+ * shape, then hands back the embedded Simulation. Accepts both v1 (pre-M5)
+ * and v2 dumps: since every field of Simulation is already plain data (no
+ * Maps, no functions), no deep reconstruction is needed beyond v1's drift
+ * backfill — this is mostly a structural-validation pass, not a transform. */
 export function fromJSON(dump: unknown): Simulation {
   if (typeof dump !== 'object' || dump === null) {
     throw new Error('fromJSON: expected an object');
   }
   const d = dump as Record<string, unknown>;
-  if (d.formatVersion !== 1) {
+  if (d.formatVersion !== 1 && d.formatVersion !== 2) {
     throw new Error(`fromJSON: unsupported formatVersion ${JSON.stringify(d.formatVersion)}`);
   }
   for (const field of REQUIRED_FIELDS) {
     if (!(field in d)) throw new Error(`fromJSON: missing required field "${field}"`);
   }
-  const { formatVersion: _formatVersion, ...rest } = d;
-  return rest as unknown as Simulation;
+  const { formatVersion, ...rest } = d;
+  const sim = rest as unknown as Simulation;
+  if (formatVersion === 1) migrateBranchV1ToV2(sim.root);
+  return sim;
 }

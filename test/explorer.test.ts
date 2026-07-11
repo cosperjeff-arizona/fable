@@ -52,8 +52,10 @@ describe('M4 acceptance', () => {
       const derivedLeaf = dump.derived!.leaves.find((l) => l.branchId === leaf.id)!;
       const entry = derivedLeaf.dictionary.find((d) => d.concept === concept)!;
       expect(entry.romanized).toBe(expectedFormRomanized);
+      // specs/M5.md: DerivedTraceStep additionally carries `kind`
+      // ('sound'/'semantic'), so the fidelity check now includes it too.
       expect(entry.trace).toEqual(
-        expectedSteps.map((s) => ({ century: s.century, romanized: s.romanized, description: s.description })),
+        expectedSteps.map((s) => ({ century: s.century, romanized: s.romanized, description: s.description, kind: s.kind })),
       );
     }
   });
