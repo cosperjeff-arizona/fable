@@ -8,8 +8,9 @@
     "etymon": "dist/src/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.webapp.json",
     "test": "vitest run",
+    "web": "npm run build && node dist/scripts/serve.js",
     "demo": "tsc -p tsconfig.json && node dist/scripts/demo.js",
     "cli": "tsc -p tsconfig.json && node dist/src/cli.js"
   },

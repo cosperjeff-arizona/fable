@@ -228,6 +228,36 @@ neutral phonemic romanization — the phonemic form alongside it in parentheses)
 different `dump.json` (from `generate --json`) onto the page to load it without regenerating
 the HTML.
 
+## `npm run web` — the live web app
+
+Where `explore` freezes one simulation into a static page, the web app runs the *engine
+itself* in your browser and regenerates whole language families live:
+
+```
+$ npm run web
+Etymon Live: http://127.0.0.1:8787/
+```
+
+The page has the same family tree / dictionary / etymology-timeline layout as the explorer,
+plus:
+
+- **live controls** — seed (with a 🎲 random button), centuries, max languages, and
+  drift/contact toggles; any change regenerates the family in a few hundred milliseconds.
+  Generation runs the real `generateSimulation` in a Web Worker, so the UI never blocks —
+  hold the seed spinner's arrow to churn through families.
+- **sticky selection** — the concept list is the same for every seed, so the selected word
+  survives regeneration: pick "hearth", then churn seeds and watch two thousand years of
+  history re-derive it differently each time.
+- **cognate-table navigation** — click any column to jump to that daughter language.
+- **a doublets panel** for the selected language.
+- **shareable state** — controls round-trip through the URL hash, and ⬇ JSON downloads the
+  current simulation as a `dump.json` (the same format as `generate --json`).
+
+Still zero dependencies: `npm run web` compiles `src/webapp/` with `tsc` (its own
+`tsconfig.webapp.json`, since the webapp needs the DOM lib) and serves the repo root with a
+~60-line Node `http` server (`scripts/serve.ts`) — the browser loads the compiled ES modules
+directly out of `dist/`, no bundler involved. Set `PORT` to serve somewhere other than 8787.
+
 ## Repository layout
 
 ```
@@ -250,7 +280,10 @@ src/
   render.ts         pure text rendering for the CLI (leaf spellings, cognate tables, etc.)
   serialize.ts      JSON dump (+ optional derived per-leaf dictionary/etymology section)
   explorer/         the self-contained HTML explorer template
+  webapp/           the live web app: generation worker + UI (compiled by tsconfig.webapp.json)
   cli.ts            etymon generate | tree | dict | trace | cognates | doublets | explore
+webapp/index.html     the live web app's host page (served by `npm run web`)
+scripts/serve.ts      zero-dep static server behind `npm run web`
 prototype/etymon.mjs  the original ~400-line zero-dependency proof of concept
 examples/seed42.json  a committed example dump (seed 42, drift + contact enabled)
 specs/               per-milestone implementation specs (M1–M7)

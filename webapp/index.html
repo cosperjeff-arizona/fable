@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etymon Live</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f6f3;
+    --panel: #ffffff;
+    --text: #1c1a17;
+    --muted: #6b6559;
+    --border: #ddd8cf;
+    --accent: #8a5a2b;
+    --accent-bg: #f3e6d0;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171613;
+      --panel: #201d19;
+      --text: #ece7de;
+      --muted: #a89f8e;
+      --border: #3a352c;
+      --accent: #e0a96d;
+      --accent-bg: #3a2c1b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+  h1, h2, h3 { font-weight: 600; }
+  h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 0.5rem; }
+  header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 { margin: 0 0 0.2rem; font-size: 1.35rem; }
+  header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+  /* controls bar */
+  #controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.1rem;
+    padding: 0.7rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    font-size: 0.9rem;
+  }
+  #controls label { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); }
+  #controls input[type="number"] {
+    font: inherit;
+    font-family: var(--mono);
+    width: 6.5rem;
+    padding: 0.3rem 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  #controls input.short { width: 4.2rem; }
+  #controls button {
+    font: inherit;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #controls button:hover { background: var(--accent-bg); }
+  #status { color: var(--muted); font-family: var(--mono); font-size: 0.8rem; margin-left: auto; }
+  body.busy #status { color: var(--accent); }
+  body.busy #layout { opacity: 0.55; transition: opacity 0.15s ease 0.15s; }
+
+  #layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  @media (max-width: 800px) {
+    #layout { grid-template-columns: 1fr; }
+  }
+  #right-col { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    min-width: 0;
+  }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.8rem; }
+  button { font: inherit; }
+  ul { list-style: none; margin: 0; padding: 0; }
+
+  /* tree */
+  .tree-root-label { font-weight: 600; margin-bottom: 0.4rem; }
+  #tree ul { padding-left: 1rem; }
+  #tree ul.tree-root { padding-left: 0; }
+  .split-label { display: block; color: var(--muted); font-size: 0.82rem; padding: 0.3rem 0.5rem; }
+  .leaf-btn, .dict-row {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    color: inherit;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .leaf-btn:hover, .dict-row:hover { background: var(--border); }
+  .leaf-btn.selected, .dict-row.selected { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+
+  /* branch history + doublets */
+  #branch-history { margin-top: 0.5rem; }
+  .history-list li { padding: 0.3rem 0.1rem; border-bottom: 1px dashed var(--border); font-size: 0.88rem; }
+  .history-list li:last-child { border-bottom: none; }
+  .history-list li.paradigm-note { color: var(--accent); }
+  .history-list .year { color: var(--muted); margin-right: 0.5rem; font-family: var(--mono); font-size: 0.8rem; }
+
+  /* dictionary */
+  #filter {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    margin: 0.4rem 0 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  #dict-list { max-height: 48vh; overflow-y: auto; }
+  .word { font-family: var(--mono); margin-left: 0.35rem; }
+
+  /* etymology */
+  .etymology-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.25rem; }
+  #play-btn {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #play-btn:hover { background: var(--accent-bg); }
+  .timeline { position: relative; margin: 0.75rem 0 1.1rem; padding-left: 1.25rem; border-left: 2px solid var(--border); }
+  .timeline-step { position: relative; padding: 0.35rem 0 0.35rem 0.5rem; transition: opacity 0.3s ease; }
+  .timeline-step::before {
+    content: "";
+    position: absolute;
+    left: -1.56rem;
+    top: 0.6rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .timeline-step.proto::before { background: var(--accent); }
+  .timeline-step.semantic::before { background: var(--accent); border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--accent); }
+  .timeline-step.semantic .label { font-style: italic; }
+  .timeline-step .form { font-family: var(--mono); font-size: 1rem; }
+  .timeline-step.final .form { color: var(--accent); font-weight: 700; font-size: 1.12rem; }
+  .timeline-step .label { display: block; color: var(--muted); font-size: 0.82rem; }
+  .timeline-step.pending { opacity: 0; }
+  .semantic-notes { font-style: italic; margin: 0.3rem 0 0; }
+  .cognate-table-wrap { overflow-x: auto; }
+  .cognate-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  .cognate-table th, .cognate-table td { padding: 0.35rem 0.55rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  .cognate-table td { cursor: pointer; font-family: var(--mono); }
+  .cognate-table td:hover { background: var(--border); }
+  .cognate-table td.selected { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+  <header>
+    <h1 id="family-name">Etymon Live</h1>
+    <p id="family-meta">generating a language family…</p>
+  </header>
+
+  <div id="controls">
+    <label>seed <input id="seed" type="number" min="0" step="1" value="42"></label>
+    <button type="button" id="random-seed" title="Random seed">🎲 random</button>
+    <label>centuries <input id="centuries" class="short" type="number" min="1" max="50" step="1" value="20"></label>
+    <label>max languages <input id="max-leaves" class="short" type="number" min="1" max="12" step="1" value="6"></label>
+    <label><input id="drift" type="checkbox" checked> semantic drift</label>
+    <label><input id="contact" type="checkbox" checked> contact/borrowing</label>
+    <button type="button" id="download" title="Download the current simulation as a dump.json (same format as etymon generate --json)">⬇ JSON</button>
+    <span id="status"></span>
+  </div>
+
+  <div id="layout">
+    <section class="panel" id="tree-panel">
+      <h2>Family tree</h2>
+      <div id="tree"></div>
+      <h2>Branch history</h2>
+      <div id="branch-history"></div>
+    </section>
+    <div id="right-col">
+      <section class="panel" id="dict-panel">
+        <h2>Dictionary <span id="dict-leaf-name" class="muted"></span></h2>
+        <input id="filter" type="text" placeholder="Filter by concept or word…" autocomplete="off">
+        <div id="dict-list"></div>
+      </section>
+      <section class="panel" id="etymology-panel">
+        <h2>Etymology</h2>
+        <div id="etymology"></div>
+      </section>
+      <section class="panel" id="doublets-panel">
+        <h2>Doublets <span class="muted small">in the selected language</span></h2>
+        <div id="doublets"></div>
+      </section>
+    </div>
+  </div>
+
+<script type="module" src="/dist/src/webapp/app.js"></script>
+</body>
+</html>
