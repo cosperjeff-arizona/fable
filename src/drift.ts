@@ -17,7 +17,7 @@
 // the proto root, once a reassignment exists).
 
 import type { Stream } from './prng.js';
-import type { Inventory, Segment, Word } from './phonology.js';
+import { type Inventory, type Segment, type Word, syllabify } from './phonology.js';
 import { type Affix, type Lexeme, affixDerivedWord, compoundWord } from './lexicon.js';
 import { CONCEPTS, type Domain } from './concepts.js';
 
@@ -225,6 +225,52 @@ function currentWordsInUse(workingLexemes: ReadonlyMap<string, Lexeme>): Word[] 
   return [...workingLexemes.values()].map((l) => l.word);
 }
 
+// ----------------------------------------------------- coinage quality tuning
+//
+// specs/M7.md's "Coinage quality tuning": a compound whose two currently-
+// evolved parts sum to more than 4 syllables gets its FIRST part clipped to
+// just its initial syllable before compounding (attested compound-clipping,
+// cf. "sitcom", "cyborg") — this is what keeps repeated coinage/taboo
+// compounding over many centuries from drifting into unpronounceable
+// five-plus-syllable monsters, since a coined word's own parts can
+// themselves already be previous coinages.
+
+const MAX_COMPOUND_SYLLABLES = 4;
+
+function syllableCount(word: Word): number {
+  return syllabify(word).length;
+}
+
+/** `lexeme` reduced to just its first syllable's segments (stress reset to
+ * 0, since the clipped stub is always word-initial). */
+function clipToInitialSyllable(lexeme: Lexeme): Lexeme {
+  const syllables = syllabify(lexeme.word);
+  const first = syllables[0];
+  if (!first) return lexeme; // defensive; every generated word has >=1 vowel
+  return { ...lexeme, word: { segments: lexeme.word.segments.slice(first.start, first.end), stress: 0 } };
+}
+
+/**
+ * `compoundWord`, but clipping the first part to its initial syllable
+ * whenever the unclipped total would exceed `MAX_COMPOUND_SYLLABLES` — and,
+ * as a safety net for the rare case where even a clipped first part plus an
+ * already-long second part (itself a previous multi-generation coinage)
+ * would still exceed the acceptance bound of 5 syllables, also clipping the
+ * second part. In practice the first-part-only clip is what fires almost
+ * every time; the second clip only matters for long compounding chains.
+ */
+function compoundWithClipping(a: Lexeme, b: Lexeme, inv: Inventory, stream: Stream, used: Word[]): Word {
+  let pa = a;
+  let pb = b;
+  if (syllableCount(pa.word) + syllableCount(pb.word) > MAX_COMPOUND_SYLLABLES) {
+    pa = clipToInitialSyllable(pa);
+  }
+  if (syllableCount(pa.word) + syllableCount(pb.word) > MAX_COMPOUND_SYLLABLES + 1) {
+    pb = clipToInitialSyllable(pb);
+  }
+  return compoundWord(pa, pb, inv, stream, used);
+}
+
 /**
  * Coin a replacement word for `concept` from the branch's *current* working
  * lexemes (specs/M5.md's coinage/erosion contract). Tries REFILL_TEMPLATES
@@ -251,12 +297,18 @@ export function coinReplacement(
     const b = workingLexemes.get(p2);
     if (!a || !b) continue;
     const used = currentWordsInUse(workingLexemes);
-    const word = compoundWord(a, b, inventory, stream, used);
+    const word = compoundWithClipping(a, b, inventory, stream, used);
     return { word, origin: 'compound', parts: [p1, p2] };
   }
 
   const domain = domainOf(concept);
-  const anchorId = domain ? ANCHOR_BY_DOMAIN[domain] : undefined;
+  const rawAnchorId = domain ? ANCHOR_BY_DOMAIN[domain] : undefined;
+  // specs/M7.md: "must not produce X + X-diminutive self-compounds" — if the
+  // gap concept IS its own domain's default anchor (e.g. 'earth' in the
+  // nature domain, 'spirit' in abstract), fall back to the qualities domain's
+  // anchor ('big') as the modifier instead, so the compound is never built
+  // from the just-gapped concept's own material on both sides.
+  const anchorId = rawAnchorId === concept ? ANCHOR_BY_DOMAIN.qualities : rawAnchorId;
   const anchorLexeme = anchorId ? workingLexemes.get(anchorId) : undefined;
   const diminutive = affixes.find((a) => a.role === 'diminutive');
 
@@ -265,7 +317,7 @@ export function coinReplacement(
     const oldAsLexeme: Lexeme = { concept, word: oldWord, origin: 'root' };
     const derivedWord = affixDerivedWord(oldAsLexeme, diminutive, inventory, stream, used);
     const derivedAsLexeme: Lexeme = { concept: `${concept}~dim`, word: derivedWord, origin: 'derived', parts: [concept] };
-    const word = compoundWord(anchorLexeme, derivedAsLexeme, inventory, stream, used);
+    const word = compoundWithClipping(anchorLexeme, derivedAsLexeme, inventory, stream, used);
     // Display label only (specs/M5.md dict/trace "coined from A + B"):
     // names the *old* word's diminutive derivation, not the (currently
     // nonexistent) concept — clearer than repeating the gapped concept id.
@@ -425,7 +477,7 @@ export function driftStep(
       const used = currentWordsInUse(lexemes);
       const a = lexemes.get(p1)!;
       const b = lexemes.get(p2)!;
-      const word = compoundWord(a, b, inventory, stream, used);
+      const word = compoundWithClipping(a, b, inventory, stream, used);
       lexemes.set(entry.concept, { concept: entry.concept, word, origin: 'compound', parts: [p1, p2] });
       reassignments.push({
         century,

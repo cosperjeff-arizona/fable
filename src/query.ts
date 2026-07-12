@@ -105,6 +105,13 @@ export type TraceStep = {
    * specs/M3.md's TraceStep — existing consumers that never read `kind`
    * are unaffected. */
   kind: 'sound' | 'semantic';
+  /** specs/M7.md addition: for a 'semantic' step, the reassignment's cause
+   * and (for coinage/taboo-coinage) its parts — lets render.ts build
+   * cause-specific display text (e.g. embedding this step's own `form` as
+   * an "origin-time" spelled form) without parsing `description`. Present
+   * only when `kind === 'semantic'`; `undefined` for ordinary sound steps. */
+  cause?: LexemeReassignment['cause'];
+  parts?: string[];
 };
 
 /** Replay `events` over `word` in chronological order, recording only steps
@@ -168,6 +175,8 @@ function resolveConcept(sim: Simulation, conceptId: string, branchId: string): {
     form: base,
     romanized: romanize(base),
     kind: 'semantic',
+    cause: reassignment.cause,
+    parts: reassignment.parts,
   };
   const { form, steps } = replaySound(base, laterEvents);
   return { form, steps: [semanticStep, ...steps] };

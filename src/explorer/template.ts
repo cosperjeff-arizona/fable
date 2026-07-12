@@ -306,18 +306,34 @@ var DUMP = __ETYMON_DUMP_JSON__;
     byId('tree').innerHTML = html;
   }
 
+  // specs/M7.md's "Output nits": M5's drift/taboo event notes already bake
+  // in their own "c. year N" (see src/drift.ts's noteFor/tabooNoteFor), which
+  // duplicated the separate "year N" column this list renders next to every
+  // item. Strip a trailing ", c. year N" (or " c. year N") before display.
+  // (Every backslash below is doubled: this whole <script> block is itself
+  // text inside src/explorer/template.ts's OUTER template literal, so a
+  // single backslash here would be consumed as a string escape before this
+  // text ever becomes a real regex literal at runtime — see embedDump's own
+  // "<\\/" for the same reason, right after this template literal closes.)
+  function stripYearSuffix(text) {
+    return String(text).replace(/,?\\s*c\\.\\s*year\\s*\\d+\\s*$/, '');
+  }
+
   function pathEventsAndNotes(dump, leafId) {
     var path = findPath(dump.root, leafId, []) || [];
     var items = [];
     path.forEach(function (branch) {
       branch.events.forEach(function (ev) {
         // Sound-change events carry { change: { description } }; M5's
-        // drift/taboo events carry a flat { note } instead.
-        var text = ev.change ? ev.change.description : ev.note;
+        // drift/taboo events (and M6's borrow events) carry a flat { note }
+        // instead.
+        var text = ev.change ? ev.change.description : stripYearSuffix(ev.note);
         items.push({ century: ev.century, paradigm: false, text: text || '(event)' });
       });
       branch.paradigmNotes.forEach(function (note) {
-        items.push({ century: note.century, paradigm: true, text: note.note });
+        // Same fix as above: a paradigm-collapse note also bakes in its own
+        // "c. year N" (src/changes/paradigms.ts).
+        items.push({ century: note.century, paradigm: true, text: stripYearSuffix(note.note) });
       });
     });
     items.sort(function (a, b) { return a.century - b.century; });
@@ -349,7 +365,8 @@ var DUMP = __ETYMON_DUMP_JSON__;
     var needle = filterQuery.trim().toLowerCase();
     var rows = leaf.dictionary.filter(function (entry) {
       if (!needle) return true;
-      return entry.concept.toLowerCase().indexOf(needle) !== -1 || entry.romanized.toLowerCase().indexOf(needle) !== -1;
+      var word = entry.spelled || entry.romanized;
+      return entry.concept.toLowerCase().indexOf(needle) !== -1 || word.toLowerCase().indexOf(needle) !== -1;
     });
     if (rows.length === 0) {
       container.innerHTML = '<p class="muted small">No matches.</p>';
@@ -357,11 +374,26 @@ var DUMP = __ETYMON_DUMP_JSON__;
     }
     var html = rows.map(function (entry) {
       var cls = 'dict-row' + (entry.concept === state.concept ? ' selected' : '');
+      // specs/M7.md: dictionary rows show this leaf's own spelling.
+      var word = entry.spelled || entry.romanized;
       return '<li><button type="button" class="' + cls + '" data-concept="' + escapeHtml(entry.concept) + '">' +
         '<span class="concept muted">' + escapeHtml(entry.concept) + '</span> — ' +
-        '<span class="word">' + escapeHtml(entry.romanized) + '</span></button></li>';
+        '<span class="word">' + escapeHtml(word) + '</span></button></li>';
     }).join('');
     container.innerHTML = '<ul class="dict-rows">' + html + '</ul>';
+  }
+
+  // specs/M7.md: a timeline step's headline is this leaf's own spelling, with
+  // the neutral phonemic romanization in parentheses only where the two
+  // differ (dumps that predate M7 have no spelled field, in which case
+  // this just falls back to romanized alone, unchanged from before).
+  function stepFormHtml(step) {
+    var spelled = step.spelled || step.romanized;
+    var html = escapeHtml(spelled);
+    if (step.romanized && step.romanized !== spelled) {
+      html += ' <span class="muted small">(' + escapeHtml(step.romanized) + ')</span>';
+    }
+    return html;
   }
 
   function renderEtymology(dump, leafId, concept) {
@@ -387,8 +419,11 @@ var DUMP = __ETYMON_DUMP_JSON__;
     var steps = hasSemanticGenesis ? allSteps.slice(1) : allSteps;
     var protoStepHtml = genesisStep ?
       '<div class="timeline-step proto semantic' + (steps.length === 0 ? ' final' : '') + '">' +
-        '<span class="form">' + escapeHtml(genesisStep.romanized) + '</span>' +
+        '<span class="form">' + stepFormHtml(genesisStep) + '</span>' +
         '<span class="label">year ' + (genesisStep.century * 100) + ' — ' + escapeHtml(genesisStep.description) + '</span></div>' :
+      // Proto forms keep the neutral phonemic romanization (specs/M7.md):
+      // this is the family's shared ancestral form, not any one daughter's
+      // own spelling.
       '<div class="timeline-step proto' + (steps.length === 0 ? ' final' : '') + '">' +
         '<span class="form">*' + escapeHtml(proto.word.romanized) + '</span>' +
         '<span class="label">' + escapeHtml(dump.familyName) + '</span></div>';
@@ -396,7 +431,7 @@ var DUMP = __ETYMON_DUMP_JSON__;
       var isLast = i === steps.length - 1;
       var cls = 'timeline-step' + (isLast ? ' final' : '') + (step.kind === 'semantic' ? ' semantic' : '');
       return '<div class="' + cls + '">' +
-        '<span class="form">' + escapeHtml(step.romanized) + '</span>' +
+        '<span class="form">' + stepFormHtml(step) + '</span>' +
         '<span class="label">year ' + (step.century * 100) + ' — ' + escapeHtml(step.description) + '</span></div>';
     }).join('');
 
@@ -405,7 +440,10 @@ var DUMP = __ETYMON_DUMP_JSON__;
       var e = l.dictionary.filter(function (d) { return d.concept === concept; })[0];
       var cls = l.branchId === leafId ? ' class="selected"' : '';
       var mark = e && e.borrowed ? ' ‡' : (e && e.coined ? ' †' : '');
-      return '<td' + cls + '>' + escapeHtml(e ? e.romanized : '—') + escapeHtml(mark) + '</td>';
+      // specs/M7.md: each column is a daughter language, so it shows that
+      // leaf's own spelling.
+      var word = e ? (e.spelled || e.romanized) : '—';
+      return '<td' + cls + '>' + escapeHtml(word) + escapeHtml(mark) + '</td>';
     }).join('');
 
     var sensesHtml = (entry.senses && entry.senses.length > 1) ?

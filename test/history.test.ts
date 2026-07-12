@@ -64,8 +64,15 @@ describe('M3 acceptance', () => {
   it('examples/seed42.json matches a fresh seed-42 simulation', () => {
     const onDisk = JSON.parse(readFileSync('examples/seed42.json', 'utf8'));
     // specs/M4.md: the committed example dump now includes the `derived`
-    // section, so the fresh comparison must compute it too.
-    const fresh = JSON.parse(JSON.stringify(toJSON(generateSimulation({ seed: 42 }), { derived: true })));
+    // section, so the fresh comparison must compute it too. specs/M7.md:
+    // the example is regenerated with drift AND contact enabled (matching
+    // the CLI's own defaults — see src/cli.ts's `loadSimulation`), so it
+    // showcases the full feature set (sound change, semantic drift, taboo
+    // replacement, coinage, contact/borrowing, doublets, and per-leaf
+    // orthography) rather than the library's bare defaults.
+    const fresh = JSON.parse(
+      JSON.stringify(toJSON(generateSimulation({ seed: 42, driftEnabled: true, contactEnabled: true }), { derived: true })),
+    );
     expect(onDisk).toEqual(fresh);
   });
 

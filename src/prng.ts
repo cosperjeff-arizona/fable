@@ -111,6 +111,17 @@ export type Streams = {
    * sound-change or drift draws.
    */
   contact(idA: string, idB: string): Stream;
+  /**
+   * specs/M7.md: per-language orthography conventions are sampled from yet
+   * another independent stream family, one per leaf branch id
+   * (`orthography:<branchId>`), consumed only at query/render time — never
+   * during `generateSimulation` itself. Distinct from every other family, so
+   * sampling (or not sampling) a leaf's orthography can never perturb the
+   * simulation's own content: branch shape, sound-change events,
+   * drift/taboo/coinage, or borrowing are all byte-identical whether or not
+   * any caller ever asks for an Orthography.
+   */
+  orthography(branchId: string): Stream;
 };
 
 /**
@@ -133,6 +144,9 @@ export function makeStreams(seed: number): Streams {
     contact(idA: string, idB: string): Stream {
       const [x, y] = [idA, idB].sort();
       return derive(`contact:${x}|${y}`);
+    },
+    orthography(branchId: string): Stream {
+      return derive(`orthography:${branchId}`);
     },
   };
 }

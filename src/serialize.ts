@@ -13,6 +13,7 @@
 import type { Affix, Lexeme, Lexicon } from './lexicon.js';
 import type { Segment } from './phonology.js';
 import { romanize } from './romanize.js';
+import { orthographyFor, spell } from './orthography.js';
 import type { Branch, Simulation } from './history.js';
 import { isBorrowed, isCoined, isTabooed, leaves, semanticNotes, senses, trace } from './query.js';
 import { rootInterval, type Interval } from './contact.js';
@@ -69,6 +70,12 @@ export function serializeLexicon(lexicon: Lexicon): SerializedLexicon {
 export type DerivedTraceStep = {
   century: number;
   romanized: string;
+  /** specs/M7.md: this step's form re-spelled in the leaf's own sampled
+   * Orthography. Equal to `romanized` when this leaf's conventions happen
+   * to coincide with the neutral phonemic romanization; the explorer shows
+   * `romanized` in parentheses only when the two differ. Optional/additive
+   * so pre-M7 consumers that never read it still work. */
+  spelled?: string;
   description: string;
   /** specs/M5.md: 'semantic' marks a reassignment milestone (coinage, drift
    * shift/extend target, or taboo replacement) rather than a sound change.
@@ -78,7 +85,10 @@ export type DerivedTraceStep = {
 
 export type DerivedDictionaryEntry = {
   concept: string;
-  romanized: string; // final form in this leaf
+  romanized: string; // final form in this leaf, neutral phonemic romanization
+  /** specs/M7.md: the same final form, re-spelled in this leaf's own
+   * Orthography (see DerivedTraceStep.spelled). Optional/additive. */
+  spelled?: string;
   trace: DerivedTraceStep[]; // form-altering steps only
   /** specs/M5.md `dict` extensions — always present from formatVersion 2 on;
    * absent on dumps that predate M5 (fromJSON backfills nothing here, since
@@ -117,24 +127,38 @@ const CURRENT_FORMAT_VERSION = 3;
  * `trace`/`dict` commands use. */
 function computeDerived(sim: Simulation): Derived {
   return {
-    leaves: leaves(sim).map((leaf) => ({
-      branchId: leaf.id,
-      name: leaf.name ?? leaf.id,
-      dictionary: sim.lexicon.lexemes.map((lexeme) => {
-        const steps = trace(sim, lexeme.concept, leaf.id);
-        const last = steps[steps.length - 1];
-        return {
-          concept: lexeme.concept,
-          romanized: last ? last.romanized : lexeme.word.romanized,
-          trace: steps.map((s) => ({ century: s.century, romanized: s.romanized, description: s.description, kind: s.kind })),
-          senses: senses(sim, lexeme.concept, leaf.id),
-          notes: semanticNotes(sim, lexeme.concept, leaf.id),
-          coined: isCoined(sim, lexeme.concept, leaf.id),
-          taboo: isTabooed(sim, lexeme.concept, leaf.id),
-          borrowed: isBorrowed(sim, lexeme.concept, leaf.id),
-        };
-      }),
-    })),
+    leaves: leaves(sim).map((leaf) => {
+      // specs/M7.md: sampled once per leaf and reused for every concept's
+      // dictionary entry/trace steps below (this leaf's Orthography is a
+      // fixed set of choices, not something that varies per word).
+      const orthography = orthographyFor(sim, leaf.id);
+      return {
+        branchId: leaf.id,
+        name: leaf.name ?? leaf.id,
+        dictionary: sim.lexicon.lexemes.map((lexeme) => {
+          const steps = trace(sim, lexeme.concept, leaf.id);
+          const last = steps[steps.length - 1];
+          const finalWord = last ? last.form : { segments: lexeme.word.segments, stress: lexeme.word.stress };
+          return {
+            concept: lexeme.concept,
+            romanized: last ? last.romanized : lexeme.word.romanized,
+            spelled: spell(finalWord, orthography),
+            trace: steps.map((s) => ({
+              century: s.century,
+              romanized: s.romanized,
+              spelled: spell(s.form, orthography),
+              description: s.description,
+              kind: s.kind,
+            })),
+            senses: senses(sim, lexeme.concept, leaf.id),
+            notes: semanticNotes(sim, lexeme.concept, leaf.id),
+            coined: isCoined(sim, lexeme.concept, leaf.id),
+            taboo: isTabooed(sim, lexeme.concept, leaf.id),
+            borrowed: isBorrowed(sim, lexeme.concept, leaf.id),
+          };
+        }),
+      };
+    }),
   };
 }
 

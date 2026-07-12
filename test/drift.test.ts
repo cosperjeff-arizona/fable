@@ -14,7 +14,7 @@ import { generateSimulation, type Branch, type ChangeEvent, type Simulation, typ
 import { formIn, leaves, trace } from '../src/query.js';
 import { renderGenerate } from '../src/render.js';
 import { fromJSON, toJSON } from '../src/serialize.js';
-import { wordKey, type Consonant, type Vowel, type Word } from '../src/phonology.js';
+import { syllabify, wordKey, type Consonant, type Vowel, type Word } from '../src/phonology.js';
 import { Stream } from '../src/prng.js';
 
 const GOLDEN_SEEDS = [1, 42, 2026];
@@ -293,6 +293,42 @@ describe('M5 acceptance', () => {
       expect(steps[0]!.description).toContain('eye');
       expect(steps[1]!.kind).toBe('sound');
       expect(steps[1]!.century).toBe(SOUND_CHANGE_CENTURY);
+    });
+  });
+
+  // specs/M7.md's coinage quality tuning: property test — no coined word
+  // (a reassignment caused by coinage or a taboo euphemism) exceeds 5
+  // syllables, over >= 25 seeds with drift AND taboo enabled.
+  describe('coinage syllable bound (25 seeds)', () => {
+    const SEEDS = Array.from({ length: 25 }, (_, i) => i + 1);
+
+    function allBranches(root: Branch): Branch[] {
+      const out: Branch[] = [];
+      const walk = (b: Branch): void => {
+        out.push(b);
+        for (const c of b.children) walk(c);
+      };
+      walk(root);
+      return out;
+    }
+
+    it('no coined/taboo-coined word exceeds 5 syllables', () => {
+      let checkedAny = false;
+      for (const seed of SEEDS) {
+        const sim = generateSimulation({ seed, driftEnabled: true });
+        for (const branch of allBranches(sim.root)) {
+          for (const r of branch.reassignments) {
+            if (r.cause !== 'coinage' && r.cause !== 'taboo-coinage') continue;
+            checkedAny = true;
+            const syllables = syllabify({ segments: r.word.segments, stress: r.word.stress }).length;
+            expect(
+              syllables,
+              `seed ${seed}, branch ${branch.id}, concept ${r.concept}, century ${r.century}`,
+            ).toBeLessThanOrEqual(5);
+          }
+        }
+      }
+      expect(checkedAny, 'expected at least one coinage/taboo-coinage across seeds 1-25').toBe(true);
     });
   });
 

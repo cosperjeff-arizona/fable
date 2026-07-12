@@ -125,21 +125,44 @@ Perfect fit for cheap-model implementation because everything is checkable:
 ## Milestones (sized for offloading)
 
 Each milestone has crisp acceptance criteria; M2 is the heart and the one that gets the most
-design attention (see `specs/`).
+design attention (see `specs/`). **All seven are complete.**
 
-- **M1 — phonology + lexicon** (port prototype to typed feature system; 200 concepts;
+- **M1 — phonology + lexicon** ✅ (port prototype to typed feature system; 200 concepts;
   morphology). *Accept: golden tests, phonotactic property tests pass.* Spec: `specs/M1.md`.
-- **M2 — sound-change engine** (feature-based rule application; catalog of ~40 changes with
+- **M2 — sound-change engine** ✅ (feature-based rule application; catalog of ~40 changes with
   plausibility conditioning). *Accept: every catalog change has unit tests with hand-checked
   before/after forms; conditioning prevents degenerate sequences.* Spec: `specs/M2.md`.
-- **M3 — history driver** (tree, event logs, per-branch evolution; CLI `generate`/`tree`;
-  JSON dump of a full simulation).
-- **M4 — explorer-lite** (static HTML page reading the M3 JSON dump: family tree,
+- **M3 — history driver** ✅ (tree, event logs, per-branch evolution; CLI `generate`/`tree`;
+  JSON dump of a full simulation). Spec: `specs/M3.md`.
+- **M4 — explorer-lite** ✅ (static HTML page reading the M3 JSON dump: family tree,
   dictionaries, animated trace playback). Pulled forward for demo value and to pressure-test
-  the JSON schema early.
-- **M5 — semantic drift + coinage** (drift graph, taboo replacement, derivation).
-- **M6 — contact** (geography, borrowing, loanword adaptation; `doublets` query).
-- **M7 — outputs + polish** (markdown dictionaries, per-language orthographies, full explorer).
+  the JSON schema early. Spec: `specs/M4.md`.
+- **M5 — semantic drift + coinage** ✅ (drift graph, taboo replacement, derivation). Spec:
+  `specs/M5.md`.
+- **M6 — contact** ✅ (geography, borrowing, loanword adaptation; `doublets` query). Spec:
+  `specs/M6.md`.
+- **M7 — outputs + polish** ✅ (per-language orthographies, coinage quality tuning, output
+  nits, docs). Spec: `specs/M7.md`.
+
+## Future ideas (v2)
+
+Out of scope for v1, but natural next steps if this keeps going:
+
+- **Full grammar evolution.** v1 tracks inflectional paradigms and reports when sound change
+  collapses them ("case system collapsed; fixed word order emerged" — see Decision 3 below);
+  actually simulating the resulting syntax (word-order fixing, new analytic constructions,
+  grammaticalization of function words) is a substantially bigger project of its own.
+- **Tonogenesis.** Mentioned as a stretch goal for the sound-change catalog in M2; would need
+  a tone feature on vowels/syllables and a family of changes that convert lost contrasts
+  (e.g. voicing, coda glottals) into tone, the way real tonogenesis works.
+- **A larger, denser drift graph.** The current ~50-edge semantic network and handful of
+  taboo/refill templates were sized to prove the mechanism; a few hundred more curated edges
+  (and per-domain refill templates for every concept, not just the ones that currently have
+  one) would make daughter-language meaning divergence richer and less repetitive across runs.
+- **An explorer cognate-hunt view.** A dedicated panel that picks two daughter languages and
+  surfaces their most/least obviously-related cognate pairs (by edit distance or shared
+  features) as a little puzzle — the "cognate hunt" mentioned in the original pitch, distinct
+  from the etymology/cognate-table views already shipped.
 
 ## Decisions (formerly open questions)
 

@@ -11,6 +11,7 @@ import { generateSimulation } from '../src/history.js';
 import { leaves, formIn, trace } from '../src/query.js';
 import { toJSON } from '../src/serialize.js';
 import { embedDump, EXPLORER_TEMPLATE } from '../src/explorer/template.js';
+import { orthographyFor, spell } from '../src/orthography.js';
 
 const FORBIDDEN_SUBSTRINGS = ['http://', 'https://', 'fetch(', 'import('];
 
@@ -42,20 +43,30 @@ describe('M4 acceptance', () => {
       const concept = concepts[idx]!;
       const leaf = allLeaves[i % allLeaves.length]!;
       const expectedSteps = trace(sim, concept, leaf.id);
-      const expectedFormRomanized = (() => {
-        const proto = sim.lexicon.lexemes.find((l) => l.concept === concept)!;
-        return expectedSteps.length > 0 ? expectedSteps[expectedSteps.length - 1]!.romanized : proto.word.romanized;
-      })();
+      const orthography = orthographyFor(sim, leaf.id);
+      const proto = sim.lexicon.lexemes.find((l) => l.concept === concept)!;
+      const expectedFinalForm = expectedSteps.length > 0 ? expectedSteps[expectedSteps.length - 1]!.form : proto.word;
+      const expectedFormRomanized =
+        expectedSteps.length > 0 ? expectedSteps[expectedSteps.length - 1]!.romanized : proto.word.romanized;
       // formIn must agree too (sanity: it's the same replay `trace` used).
       formIn(sim, concept, leaf.id);
 
       const derivedLeaf = dump.derived!.leaves.find((l) => l.branchId === leaf.id)!;
       const entry = derivedLeaf.dictionary.find((d) => d.concept === concept)!;
       expect(entry.romanized).toBe(expectedFormRomanized);
+      // specs/M7.md: DerivedDictionaryEntry additionally carries `spelled`,
+      // this leaf's own Orthography rendering of the same final form.
+      expect(entry.spelled).toBe(spell(expectedFinalForm, orthography));
       // specs/M5.md: DerivedTraceStep additionally carries `kind`
-      // ('sound'/'semantic'), so the fidelity check now includes it too.
+      // ('sound'/'semantic'); specs/M7.md adds `spelled` per step too.
       expect(entry.trace).toEqual(
-        expectedSteps.map((s) => ({ century: s.century, romanized: s.romanized, description: s.description, kind: s.kind })),
+        expectedSteps.map((s) => ({
+          century: s.century,
+          romanized: s.romanized,
+          spelled: spell(s.form, orthography),
+          description: s.description,
+          kind: s.kind,
+        })),
       );
     }
   });

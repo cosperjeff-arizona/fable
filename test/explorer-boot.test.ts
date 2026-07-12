@@ -72,6 +72,19 @@ describe('explorer boot', () => {
     // branch history rendered, including at least one entry
     expect(dom.element('branch-history').innerHTML).toContain('year');
     expect(dom.element('etymology').innerHTML.length).toBeGreaterThan(0);
+
+    // specs/M7.md: the dictionary shows this leaf's own per-leaf spelling
+    // (not just the neutral phonemic romanization) — a real tripwire for the
+    // explorer regressing to `entry.romanized` alone.
+    const dump = JSON.parse(JSON.stringify(toJSON(sim, { derived: true })));
+    const firstLeaf = dump.derived.leaves[0];
+    expect(firstLeaf.dictionary.length).toBeGreaterThan(0);
+    for (const entry of firstLeaf.dictionary) {
+      expect(typeof entry.spelled).toBe('string');
+    }
+    const spelledEntry = firstLeaf.dictionary.find((e: { spelled: string; romanized: string }) => e.spelled.length > 0);
+    expect(spelledEntry).toBeDefined();
+    expect(dom.element('dict-list').innerHTML).toContain(spelledEntry.spelled);
   });
 
   it('boots with drift disabled too (v1-era event stream)', () => {
@@ -81,5 +94,26 @@ describe('explorer boot', () => {
     const run = new Function('document', 'window', 'setTimeout', 'FileReader', extractScript(html));
     run(dom.document, {}, () => {}, function FileReaderStub() {});
     expect(dom.element('dict-list').innerHTML).toContain('dict-row');
+  });
+
+  // specs/M7.md's "Output nits": drift/taboo notes (and paradigm-collapse
+  // notes) bake in their own "c. year N", which used to duplicate the
+  // separate "year N" column every branch-history line already shows.
+  // Checked by booting several seeds and asserting the substring "c. year"
+  // never survives into the rendered branch-history panel (for the
+  // initially-selected leaf) — a real tripwire for the year-stripping regex
+  // regressing (this caught a real bug during implementation: a single
+  // backslash inside this file's giant template-literal <script> silently
+  // vanishes before the regex is ever parsed as JavaScript, since the outer
+  // string's own escape processing consumes it first).
+  it.each([1, 2, 3, 5, 8, 13, 21, 42])('no branch-history line duplicates the year (seed %i)', (seed) => {
+    const sim = generateSimulation({ seed, driftEnabled: true, contactEnabled: true });
+    const html = embedDump(toJSON(sim, { derived: true }));
+    const dom = makeStubDom();
+    const run = new Function('document', 'window', 'setTimeout', 'FileReader', extractScript(html));
+    run(dom.document, {}, () => {}, function FileReaderStub() {});
+    const historyHtml = dom.element('branch-history').innerHTML;
+    expect(historyHtml.length, `seed ${seed}: expected a non-empty branch history`).toBeGreaterThan(0);
+    expect(historyHtml, `seed ${seed}`).not.toContain('c. year');
   });
 });
